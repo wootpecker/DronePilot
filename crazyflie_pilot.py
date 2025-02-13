@@ -18,22 +18,42 @@ from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
 
-LOGS_SAVE = True
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+LOGS_SAVE = False
+#URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+FLIGHT_PATH = ["Snake", "Cage"]
+deck_attached_event = Event()
+position_estimate = [0, 0, 0]
 
 def main():
+    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot")
     URI=choose_model()
     if URI==None:
         return
-
+    flightpath=choose_flightpath()
+    flightheight=choose_flightheight()
+    crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight)
     pass
+
+def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50):
+    logging.info("Crazyflie takes measurments.")
+    with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
+        scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
+                                         cb=param_deck_flow)
+        time.sleep(1)
+
+        logconf = LogConfig(name='Position', period_in_ms=10)
+        logconf.add_variable('stateEstimate.x', 'float')
+        logconf.add_variable('stateEstimate.y', 'float')
+        logconf.add_variable('stateEstimate.z', 'float')
+
+        scf.cf.log.add_config(logconf)
+        logconf.data_received_cb.add_callback(log_pos_callback)
 
 
 
 
 
 def choose_model():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot")
     crazyflies=crazyflie_init.initialize()
     crazyflies=['E7E7E7E7E1','E7E7E7E7E2','E7E7E7E7E7']
     if len(crazyflies)==0:
@@ -46,29 +66,75 @@ def choose_model():
         for cf in range(len(crazyflies)):
             output=output+f"{cf} )  Crazyflie found: {crazyflies[cf]} \n"
         crazyflie=input(f"Multiple Crazyflies found: \n{output}Choose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
+        try:
+            crazyflie=int(crazyflie)
+        except:
+            crazyflie=-1
         while(int(crazyflie)<0 or int(crazyflie)>=len(crazyflies)):
-            crazyflie=input(f"Wrong Number: {crazyflie}.\nChoose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
+            if crazyflie==-1:
+                crazyflie=input(f"Wrong Input: No Number.\nChoose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
+            else:    
+                crazyflie=input(f"Wrong Input: {crazyflie}.\nChoose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
+            try:
+                crazyflie=int(crazyflie)
+            except:
+                crazyflie=-1
+
         crazyflies=[crazyflies[int(crazyflie)]]
     logging.info(f"Crazyflie Pilot Started with {crazyflies[0]}.")
     uri=uri_helper.uri_from_env(default=f'radio://0/80/2M/{crazyflies[0]}')
     return uri
 
+def choose_flightpath():
+    output=""
+    for fp in range(len(FLIGHT_PATH)):
+        output=output+f"{fp} )  Flightpath: {FLIGHT_PATH[fp]} \n"
+    flightpath=input(f"{output}Choose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
+    try:
+        flightpath=int(flightpath)
+    except:
+        flightpath=-1
+    while(int(flightpath)<0 or int(flightpath)>=len(FLIGHT_PATH)):
+        if flightpath==-1:
+            flightpath=input(f"Wrong Input: No Number.\nChoose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
+        else:    
+            flightpath=input(f"Wrong Input: {flightpath}.\nChoose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
+        try:
+            flightpath=int(flightpath)
+        except:
+            flightpath=-1
+    logging.info(f"Crazyflie Pilot choose Flightpath: {FLIGHT_PATH[flightpath]}.")            
+    return FLIGHT_PATH[flightpath]
 
 
-#import logging
+def choose_flightheight():
+    output=""
+    flightheight=input(f"Choose a Height for the Experiment in cm (10-100): ")
+    try:
+        flightheight=int(flightheight)
+    except:
+        flightheight=-1
+    while(int(flightheight)<10 or int(flightheight)>100):
+        if flightheight==-1:
+            flightheight=input(f"Wrong Input: No Number.\nChoose a Height for the Experiment in cm (10-100): ")
+        else:    
+            flightheight=input(f"Wrong Input: {flightheight}.\nChoose a Height for the Experiment in cm (10-100): ")
+        try:
+            flightheight=int(flightheight)
+        except:
+            flightheight=-1
+    logging.info(f"Crazyflie Pilot choose Flightheight: {flightheight}.")            
+    return flightheight
 
 
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-
-DEFAULT_HEIGHT = 0.5
-BOX_LIMIT = 0.5
-
-deck_attached_event = Event()
-
-#logging.basicConfig(level=logging.ERROR)
-
-position_estimate = [0, 0]
-
+def param_deck_flow(_, value_str):
+    value = int(value_str)
+    logging.info(f"Deck Flow Value: {value}")
+    if value:
+        deck_attached_event.set()
+        logging.info(f"Deck is attached!")        
+    else:
+        logging.info(f"Deck is NOT attached!")
 
 
 def log_pos_callback(timestamp, data, logconf):
@@ -76,50 +142,7 @@ def log_pos_callback(timestamp, data, logconf):
     global position_estimate
     position_estimate[0] = data['stateEstimate.x']
     position_estimate[1] = data['stateEstimate.y']
-
-
-def param_deck_flow(_, value_str):
-    value = int(value_str)
-    print(value)
-    if value:
-        deck_attached_event.set()
-        print('Deck is attached!')
-    else:
-        print('Deck is NOT attached!')
-
-
-def take_off_simple(scf):
-    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        time.sleep(3)
-        mc.stop()        
-
-def fly():
-    crazyflie_init()
-    pass
-    cflib.crtp.init_drivers()
-
-    with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-
-        scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
-                                         cb=param_deck_flow)
-        time.sleep(1)
-
-        logconf = LogConfig(name='Position', period_in_ms=10)
-        logconf.add_variable('stateEstimate.x', 'float')
-        logconf.add_variable('stateEstimate.y', 'float')
-        scf.cf.log.add_config(logconf)
-        logconf.data_received_cb.add_callback(log_pos_callback)
-
-        if not deck_attached_event.wait(timeout=5):
-            print('No flow deck detected!')
-            sys.exit(1)
-
-        logconf.start()
-
-        take_off_simple(scf)
-        # move_linear_simple(scf)
-        # move_box_limit(scf)
-        logconf.stop()
+    position_estimate[2] = data['stateEstimate.z']
 
 
 
