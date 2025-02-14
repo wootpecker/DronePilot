@@ -10,13 +10,14 @@ def initialize():
     logging.info('[INIT] Scanning interfaces for Crazyflies...')
     #available = cflib.crtp.scan_interfaces(address=int('E7E7E7E7E7', 16))
     #end=int('E7',16)
-    end = 10
+    end = 5
     possible_crazyflies = []
     for i in range(end):
         address=int('E7E7E7E700', 16)+i
+        address_str=f'E7E7E7E7{i:02d}'
         available = cflib.crtp.scan_interfaces(address=address)
         if len(available) > 0:
-            possible_crazyflies.append(address)
+            possible_crazyflies.append(address_str)
             for i in available:
                 logging.info(f'Crazyflies found: {i[0]}')
     return possible_crazyflies            
