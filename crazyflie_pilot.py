@@ -1,6 +1,3 @@
-
-
-
 import cflib.crtp
 import logs.logger as logger
 import logging
@@ -16,13 +13,15 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
-
+import csv
 
 LOGS_SAVE = False
 #URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-FLIGHT_PATH = ["Snake", "Cage"]
+FLIGHT_PATH = ["Nothing","(SL) Start/Land","Snake", "Cage"]
 deck_attached_event = Event()
-position_estimate = [0, 0, 0]
+POSITION_ESTIMATE = [0, 0, 0]
+FILENAME="GSL"
+START_TIME = time.time()
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot")
@@ -32,10 +31,10 @@ def main():
     flightpath=choose_flightpath()
     flightheight=choose_flightheight()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight)
-    pass
+    
 
 def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50):
-    logging.info("Crazyflie takes measurments.")
+    logging.info("Crazyflie takes measurements.")
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
         scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
                                          cb=param_deck_flow)
@@ -47,9 +46,56 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         logconf.add_variable('stateEstimate.z', 'float')
 
         scf.cf.log.add_config(logconf)
+        global START_TIME,FILENAME
+        FILENAME=f"GSL_{flightpath}_{flightheight}.csv"
+        START_TIME = time.time()
         logconf.data_received_cb.add_callback(log_pos_callback)
 
+        if not deck_attached_event.wait(timeout=5):
+            logging.info('[ERROR] No flow deck detected!')
+            sys.exit(1)
 
+        logconf.start()
+        if(flightpath=="Nothing"):
+            logconf.stop()
+            return
+        fly_take_off(scf, flightheight)
+        if(flightpath=="Snake"):
+            fly_snake_pattern(scf, flightheight)
+        elif(flightpath=="Cage"):
+            fly_cage_pattern(scf, flightheight)
+        fly_landing(scf, flightheight)
+        #take_off_simple(scf)
+        # move_linear_simple(scf)
+        # move_box_limit(scf)
+        logconf.stop()
+
+
+
+def fly_snake_pattern(scf, flightheight):
+    pass
+
+def fly_cage_pattern(scf, flightheight):
+    pass
+
+def fly_take_off(scf, flightheight):
+    with MotionCommander(scf, default_height=flightheight) as mc:
+        time.sleep(3)
+        mc.stop()
+
+def fly_landing(scf, flightheight):
+    with MotionCommander(scf, default_height=flightheight) as mc:
+        time.sleep(3)
+        mc.stop()
+
+def take_off_simple(scf):
+    DEFAULT_HEIGHT = 0.5
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+        time.sleep(3)
+        mc.stop()
+
+        time.sleep(3)
+        mc.stop()
 
 
 
@@ -132,19 +178,30 @@ def param_deck_flow(_, value_str):
     logging.info(f"Deck Flow Value: {value}")
     if value:
         deck_attached_event.set()
-        logging.info(f"Deck is attached!")        
+        logging.info(f"Flow Deck is attached!")        
     else:
-        logging.info(f"Deck is NOT attached!")
+        logging.info(f"No Flow Deck detected or attached!")
+        sys.exit(1)
 
 
 def log_pos_callback(timestamp, data, logconf):
-    print(data)
-    global position_estimate
-    position_estimate[0] = data['stateEstimate.x']
-    position_estimate[1] = data['stateEstimate.y']
-    position_estimate[2] = data['stateEstimate.z']
+    global POSITION_ESTIMATE
+    t = time.time()
+    POSITION_ESTIMATE[0] = data['stateEstimate.x']
+    POSITION_ESTIMATE[1] = data['stateEstimate.y']
+    POSITION_ESTIMATE[2] = data['stateEstimate.z']
+    save_to_csv(POSITION_ESTIMATE)
+
+    #with open('/home/hujiao/Desktop/0.15-0.5_logging.tsv', 'a+', newline='') as f:
+       # tsv_w = csv.writer(f, delimiter='\t')
+        #tsv_w.writerow([int(t), format(POSITION_ESTIMATE[0], '.10f'), format(POSITION_ESTIMATE[1], '.10f'), format(POSITION_ESTIMATE[2], '.10f')])
 
 
+
+def save_to_csv(t,position_estimate):
+    with open(f'/data/{FILENAME}.csv', 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(int(t),[format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f')])
 
 
 if __name__ == '__main__':
