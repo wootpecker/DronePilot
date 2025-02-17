@@ -1,7 +1,8 @@
 import cflib.crtp
 import logs.logger as logger
 import logging
-import crazyflie_init
+import flightpaths
+import parameters
 
 import sys
 import time
@@ -19,7 +20,7 @@ from pathlib import Path
 
 LOGS_SAVE = True
 #URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage"]
+FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 deck_attached_event = Event()
 INITIAL_POSITION = [0, 0, 0]
 POSITION_ESTIMATE = [0, 0, 0]
@@ -30,17 +31,22 @@ FILEPATH="data/test.csv"
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot")
-    URI=choose_model()
-    flightpath=choose_flightpath()
-    flightheight=choose_flightheight()
-    crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight)
+    URI=parameters.choose_model()
+    flightpath=parameters.choose_flightpath()
+    flightheight=parameters.choose_flightheight()
+    distance=parameters.choose_distance()
+    crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
     
 
-def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50):
+def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50, distance=5):
     logging.info("Crazyflie takes measurements.")
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-        scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
-                                         cb=param_deck_flow)
+        #scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
+        #                                 cb=param_deck_flow)
+        #time.sleep(2)
+
+        scf.cf.param.add_update_callback(group='deck', name=f'bcFlow2',
+                                             cb=param_deck_flow)
         time.sleep(1)
 
         logconf = LogConfig(name='Position', period_in_ms=10)
@@ -62,20 +68,21 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         if not deck_attached_event.wait(timeout=5):
             logging.error('[EXIT] No flow deck detected!')
             print('[EXIT] No flow deck detected!')
-            sys.exit(1)
+            #sys.exit(1)
 
         scf.cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(1)
         scf.cf.param.set_value('kalman.resetEstimation', '0') 
-        time.sleep(3)
-
+        #time.sleep(3)
+        window_shape=init_windowshape(logconf)
+        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[15,15],distance=6)
         logconf.start()    
         time.sleep(1)
         scf=set_initial_position(scf,flightheight)
         #time.sleep(2)
         if(flightpath=="Nothing"):
             print("Flightpath: Nothing")
-            time.sleep(10)
+            time.sleep(20)
             logconf.stop()
             return
         if(flightpath=="StartLand"):
@@ -83,38 +90,100 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
             fly_start_land(scf, flightheight)
         if(flightpath=="Snake"):
             print("Flightpath: Snake")                        
-            fly_snake_pattern(scf, flightheight)
+            fly_snake_pattern(scf, flightheight, coordinates)
         elif(flightpath=="Cage"):
             print("Flightpath: Cage")                        
-            fly_cage_pattern(scf, flightheight)
+            fly_cage_pattern(scf, flightheight, coordinates)
         #take_off_simple(scf)
         # move_linear_simple(scf)
         # move_box_limit(scf)
+        time.sleep(2)
         logconf.stop()
 
 
 
-def fly_snake_pattern(scf, flightheight):
+def fly_position_pattern(scf, flightheight, coordinates):
+    print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+
     with MotionCommander(scf, default_height=flightheight) as mc:
-        time.sleep(2)
+        time.sleep(3)
         print("0.3")
-        mc.move_distance(0.3,0.3,0)
+        mc.move_distance(0.3,0.0,0)
         time.sleep(2)
         print("0.6")
-        mc.move_distance(0.6,0,0)
+        mc.move_distance(0.0,0.3,0)
         time.sleep(2)
-        print("0")
-        mc.move_distance(-0.3,-0.6,0)
-        print(POSITION_ESTIMATE)
-        print(INITIAL_POSITION)
+        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-        print(difference)
+        print(f"difference: {difference}")
         mc.move_distance(difference[0],difference[1],0)
         time.sleep(2)
 
 
-def fly_cage_pattern(scf, flightheight):
-    pass
+
+def fly_snake_pattern(scf, flightheight, coordinates):
+    relative_positions=[]
+    coordinates.insert(0,[0,0])
+    for x in range(len(coordinates)-1):
+        relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
+    print(relative_positions)
+    with MotionCommander(scf, default_height=flightheight) as mc:
+        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")        
+        time.sleep(5)        
+        for koordinate in relative_positions:
+            mc.move_distance(koordinate[0],koordinate[1],0) 
+            time.sleep(0.1)
+            if(koordinate[1]):
+                print("turn")
+        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+        print("landing")
+        fly_landing_position(mc)  
+        time.sleep(2)        
+        mc.stop()
+        time.sleep(2)   
+
+             
+
+
+def fly_cage_pattern(scf, flightheight, coordinates):
+    relative_positions=[]
+    coordinates.insert(0,[0,0])
+    for x in range(len(coordinates)-1):
+        relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
+    print(relative_positions)
+    with MotionCommander(scf, default_height=flightheight) as mc:
+        time.sleep(3)        
+        for koordinate in relative_positions:
+            mc.move_distance(koordinate[0],koordinate[1],0)
+            time.sleep(0.1)
+
+        fly_landing_position(mc)    
+       # difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
+       # mc.move_distance(difference[0],difference[1],0)
+        time.sleep(2)        
+        mc.stop()
+        time.sleep(2)        
+
+
+
+    #for koordinate in coordinates:
+
+def fly_landing_position(mc):
+    difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
+    print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+    print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+    while(abs(difference[0])>0.1 or abs(difference[1])>0.1):
+        
+        difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
+        mc.move_distance(difference[0],difference[1],0)    
+        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+        print(f"difference: {difference}")        
+        time.sleep(2)
+
 
 def fly_start_land(scf, flightheight):
     with MotionCommander(scf, default_height=flightheight) as mc:
@@ -140,84 +209,6 @@ def fly_landing(scf, flightheight):
 
 
 
-
-def choose_model():
-    crazyflies=crazyflie_init.initialize()
-    #crazyflies=['E7E7E7E703','E7E7E7E7E2','E7E7E7E7E7']
-    if len(crazyflies)==0:
-        logging.info("[EXIT] No Crazyflies found.")
-        print("[EXIT] No Crazyflies found.")
-        sys.exit(1)
-    elif len(crazyflies)==1:
-        logging.info(f"One Crazyflie found: {crazyflies}.")
-    else:
-        output=""
-        for cf in range(len(crazyflies)):
-            output=output+f"{cf} )  Crazyflie found: {crazyflies[cf]} \n"
-        crazyflie=input(f"Multiple Crazyflies found: \n{output}Choose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
-        try:
-            crazyflie=int(crazyflie)
-        except:
-            crazyflie=-1
-        while(int(crazyflie)<0 or int(crazyflie)>=len(crazyflies)):
-            if crazyflie==-1:
-                crazyflie=input(f"Wrong Input: No Number.\nChoose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
-            else:    
-                crazyflie=input(f"Wrong Input: {crazyflie}.\nChoose a Crazyflie to connect to (0-{len(crazyflies)-1}): ")
-            try:
-                crazyflie=int(crazyflie)
-            except:
-                crazyflie=-1
-
-        crazyflies=[crazyflies[int(crazyflie)]]
-    logging.info(f"Crazyflie Pilot Started with {crazyflies[0]}.")
-    uri=uri_helper.uri_from_env(default=f'radio://0/80/2M/{crazyflies[0]}')
-    return uri
-
-def choose_flightpath():
-    #return FLIGHT_PATH[0]
-    output=""
-    for fp in range(len(FLIGHT_PATH)):
-        output=output+f"{fp} )  Flightpath: {FLIGHT_PATH[fp]} \n"
-    flightpath=input(f"{output}Choose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
-    try:
-        flightpath=int(flightpath)
-    except:
-        flightpath=-1
-    while(int(flightpath)<0 or int(flightpath)>=len(FLIGHT_PATH)):
-        if flightpath==-1:
-            flightpath=input(f"Wrong Input: No Number.\nChoose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
-        else:    
-            flightpath=input(f"Wrong Input: {flightpath}.\nChoose a Flightpath (0-{len(FLIGHT_PATH)-1}): ")
-        try:
-            flightpath=int(flightpath)
-        except:
-            flightpath=-1
-    logging.info(f"Crazyflie Pilot choose Flightpath: {FLIGHT_PATH[flightpath]}.")            
-    return FLIGHT_PATH[flightpath]
-
-
-def choose_flightheight():
-    return 0.3
-    output=""
-    flightheight=input(f"Choose a Height for the Experiment in cm (10-100): ")
-    try:
-        flightheight=int(flightheight)
-    except:
-        flightheight=-1
-    while(int(flightheight)<10 or int(flightheight)>100):
-        if flightheight==-1:
-            flightheight=input(f"Wrong Input: No Number.\nChoose a Height for the Experiment in cm (10-100): ")
-        else:    
-            flightheight=input(f"Wrong Input: {flightheight}.\nChoose a Height for the Experiment in cm (10-100): ")
-        try:
-            flightheight=int(flightheight)
-        except:
-            flightheight=-1
-    logging.info(f"Crazyflie Pilot choose Flightheight: {flightheight}.")            
-    return flightheight
-
-
 def param_deck_flow(_, value_str):
     value = int(value_str)
     logging.info(f"Deck Flow Value: {value}")
@@ -227,8 +218,8 @@ def param_deck_flow(_, value_str):
     else:
         logging.info(f"[EXIT] No Flow Deck detected or attached!")
         print(f"[EXIT] No Flow Deck detected or attached!")
-        
-        sys.exit(1)
+    #return
+        #sys.exit(1)
 
 
 def log_pos_callback(timestamp, data, logconf):
@@ -256,7 +247,13 @@ def set_initial_position(scf,flightheight):
     scf.cf.param.set_value('kalman.initialZ', flightheight)
     return scf
 
-
+def init_windowshape(logconf):
+    #logconf.start()
+    #global POSITION_ESTIMATE
+    #end_x,end_y=POSITION_ESTIMATE[0],POSITION_ESTIMATE[1]
+    #logconf.stop()
+    pass
+    
 
 
 def create_csv():

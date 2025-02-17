@@ -5,6 +5,8 @@ import math
 import torch
 
 
+FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage"]
+
 
 def main():
    # test_snake()
@@ -17,7 +19,7 @@ def test_snake():
     for x in range(2,distances):
         gdm=np.zeros([1,40,40])
         #print(gdm.shape)
-        coordinates=generate_coordinates_s_shape(gdm.shape,distance=x,pad=2,start_left=True)
+        coordinates=generate_coordinates_s_shape(gdm.shape,distance=x,pad=2,start_zero=True)
         #print(coordinates)
         values=np.arange(0,len(coordinates))
         for i, coordinate in enumerate(coordinates):
@@ -46,18 +48,29 @@ def test_cage():
         title.append(f"Distance: {x}")
     
     plot_more_images(torch.tensor(np.array(koordinaten)),title=title)
-    coordinates_to_flightpath(coordinates)
     
-    # Setup a plot 
+
+
+def init_windowshape(logconf):
+    logconf.start()
+
+
+
     
-def coordinates_to_flightpath(coordinates):
-    temp=coordinates
-    for value in temp:
+def flightpath_to_coordinates(flightpath,window_shape=[30,30],distance=5,pad=2,start_zero=True):
+    if flightpath==FLIGHT_PATH[2]:
+        coordinates=generate_coordinates_s_shape(window_shape,distance=distance,pad=pad,start_zero=start_zero)
+    elif flightpath==FLIGHT_PATH[3]:
+        coordinates=generate_coordinates_cage(window_shape,distance=distance,pad=pad)
+    else:
+        return
+
+    for value in coordinates:
             value[0]=(10*value[0]+5)/100
             value[1]=(10*value[1]+5)/100
             print(f"x: {value[0]}, y: {value[1]}")
     print(coordinates)
-    #return coordinates
+    return coordinates
 
 def plot_more_images(images, title="", save=False):
     """
@@ -83,14 +96,14 @@ def plot_more_images(images, title="", save=False):
     plt.show()
 
 
-def generate_coordinates_s_shape_rotate(dataset_GDM,distance=1,pad=1,start_left=True):
+def generate_coordinates_s_shape_rotate(dataset_GDM,distance=1,pad=1,start_zero=True):
     """
     Generates a list of coordinates in an S-shaped pattern within the given dataset dimensions.
     Args:
         dataset_GDM (list): A list containing the dimensions of the dataset.
         distance (int, optional): The vertical distance of each horizontal pass. Defaults to 3.
         pad (int, optional): The padding to apply to the edges of the dataset. Defaults to 2.
-        start_left (bool, optional): Whether to start the pattern from the left side. Defaults to True.
+        start_zero (bool, optional): Whether to start the pattern from the left side. Defaults to True.
     Returns:
         list: A list of [x, y] coordinates representing the S-shaped pattern.
     """
@@ -99,7 +112,7 @@ def generate_coordinates_s_shape_rotate(dataset_GDM,distance=1,pad=1,start_left=
     x,y=pad,pad
     while(x<=width-pad):
         #left to right
-        if(start_left):
+        if(start_zero):
             while(y<=height-pad):
                 coordinates.append([x,y])
                 y+=1
@@ -115,20 +128,20 @@ def generate_coordinates_s_shape_rotate(dataset_GDM,distance=1,pad=1,start_left=
             x+=1
             coordinates.append([x,y])
 
-        start_left= not start_left
+        start_zero= not start_zero
         x+=1
     #print(len(coordinates))
     return coordinates
 
 
-def generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=1,pad=1,start_left=True):
+def generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=1,pad=1,start_zero=True):
     """
     Generates a list of coordinates in an S-shaped pattern within the given dataset dimensions.
     Args:
         dataset_GDM (list): A list containing the dimensions of the dataset.
         distance (int, optional): The vertical distance of each horizontal pass. Defaults to 3.
         pad (int, optional): The padding to apply to the edges of the dataset. Defaults to 2.
-        start_left (bool, optional): Whether to start the pattern from the left side. Defaults to True.
+        start_zero (bool, optional): Whether to start the pattern from the left side. Defaults to True.
     Returns:
         list: A list of [x, y] coordinates representing the S-shaped pattern.
     """
@@ -137,7 +150,7 @@ def generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=1,pad=1,start_le
     x,y=width-pad,height-pad
     while(x>=pad):
         #right to left
-        if(start_left):
+        if(start_zero):
             while(y>=pad):
                 coordinates.append([x,y])
                 y-=1
@@ -153,21 +166,21 @@ def generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=1,pad=1,start_le
             x-=1
             coordinates.append([x,y])
 
-        start_left= not start_left
+        start_zero= not start_zero
         x-=1
     #print(len(coordinates))
     return coordinates
 
 
 
-def generate_coordinates_s_shape(dataset_GDM,distance=1,pad=1,start_left=True):
+def generate_coordinates_s_shape(dataset_GDM,distance=1,pad=1,start_zero=True):
     """
     Generates a list of coordinates in an S-shaped pattern within the given dataset dimensions.
     Args:
         dataset_GDM (list): A list containing the dimensions of the dataset.
         distance (int, optional): The vertical distance of each horizontal pass. Defaults to 3.
         pad (int, optional): The padding to apply to the edges of the dataset. Defaults to 2.
-        start_left (bool, optional): Whether to start the pattern from the left side. Defaults to True.
+        start_zero (bool, optional): Whether to start the pattern from the left side. Defaults to True.
     Returns:
         list: A list of [x, y] coordinates representing the S-shaped pattern.
     """
@@ -176,7 +189,7 @@ def generate_coordinates_s_shape(dataset_GDM,distance=1,pad=1,start_left=True):
     x,y=pad,pad
     while(y<=height-pad):
         #left to right
-        if(start_left):
+        if(start_zero):
             while(x<=width-pad):
                 coordinates.append([x,y])
                 x+=1
@@ -192,23 +205,27 @@ def generate_coordinates_s_shape(dataset_GDM,distance=1,pad=1,start_left=True):
             y+=1
             coordinates.append([x,y])
 
-        start_left= not start_left
+        start_zero= not start_zero
         y+=1
     #print(len(coordinates))
     return coordinates
 
 def generate_coordinates_cage(dataset_GDM,distance=3,pad=2):
-    print(f"cage, distance: {distance}")
-    coordinatesfirst=generate_coordinates_s_shape(dataset_GDM,distance=distance,pad=pad,start_left=True)
+    #print(f"cage, distance: {distance}")
+    coordinatesfirst=generate_coordinates_s_shape(dataset_GDM,distance=distance,pad=pad,start_zero=True)
 
-    print(f"coordinatesfirst[-1][1]: {coordinatesfirst[-1][1]}")
-    print(f"coordinatesfirst[-1][0]: {coordinatesfirst[-1][0]}")
-    print(f"dataset_GDM[-1]/2:{dataset_GDM[-1]/2}")
+    #print(f"coordinatesfirst[-1][1]: {coordinatesfirst[-1][1]}")
+    #print(f"coordinatesfirst[-1][0]: {coordinatesfirst[-1][0]}")
+    #print(f"dataset_GDM[-1]/2:{dataset_GDM[-1]/2}")
     if coordinatesfirst[-1][0]>dataset_GDM[-1]/2:
         #print(distance)
-        coordinatessecond=generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=distance,pad=pad,start_left=True)
+        coordinatessecond=generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=distance,pad=pad,start_zero=True)
     else:
-        coordinatessecond=generate_coordinates_s_shape_rotate(dataset_GDM,distance=distance,pad=pad,start_left=False)
+        coordinatessecond=generate_coordinates_s_shape_rotate(dataset_GDM,distance=distance,pad=pad,start_zero=False)
+    if(coordinatessecond[0][0]==coordinatesfirst[len(coordinatesfirst)-1][0] and coordinatessecond[0][1]==coordinatesfirst[len(coordinatesfirst)-1][1]):
+        coordinatessecond.pop(0)
+    #coordinatessecond.pop(0)
+
     #coordinatessecond=[]
     coordinatesfirst.extend(coordinatessecond)
     return coordinatesfirst
