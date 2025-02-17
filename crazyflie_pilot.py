@@ -73,7 +73,7 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         scf.cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(1)
         scf.cf.param.set_value('kalman.resetEstimation', '0') 
-        #time.sleep(3)
+        time.sleep(1)
         window_shape=init_windowshape(logconf)
         coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[15,15],distance=6)
         logconf.start()    
@@ -88,12 +88,17 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         if(flightpath=="StartLand"):
             print("Flightpath: StartLand")            
             fly_start_land(scf, flightheight)
+        if(flightpath=="TestPositioning"):
+            print("Flightpath: TestPositioning")            
+            fly_position_pattern(scf,flightheight)
+
         if(flightpath=="Snake"):
             print("Flightpath: Snake")                        
             fly_snake_pattern(scf, flightheight, coordinates)
         elif(flightpath=="Cage"):
             print("Flightpath: Cage")                        
             fly_cage_pattern(scf, flightheight, coordinates)
+
         #take_off_simple(scf)
         # move_linear_simple(scf)
         # move_box_limit(scf)
@@ -102,7 +107,7 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
 
 
 
-def fly_position_pattern(scf, flightheight, coordinates):
+def fly_position_pattern(scf, flightheight):
     print(f"INITIAL_POSITION: {INITIAL_POSITION}")
 
     with MotionCommander(scf, default_height=flightheight) as mc:
@@ -113,6 +118,8 @@ def fly_position_pattern(scf, flightheight, coordinates):
         print("0.6")
         mc.move_distance(0.0,0.3,0)
         time.sleep(2)
+        fly_landing_position(mc)
+        return
         print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
         print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
@@ -137,9 +144,8 @@ def fly_snake_pattern(scf, flightheight, coordinates):
             time.sleep(0.1)
             if(koordinate[1]):
                 print("turn")
-        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
-        print("landing")
+       # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        #print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         fly_landing_position(mc)  
         time.sleep(2)        
         mc.stop()
@@ -172,9 +178,11 @@ def fly_cage_pattern(scf, flightheight, coordinates):
     #for koordinate in coordinates:
 
 def fly_landing_position(mc):
+    print("landing")
     difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
     print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
     print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+    print(f"difference: {difference}")     
     while(abs(difference[0])>0.1 or abs(difference[1])>0.1):
         
         difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]

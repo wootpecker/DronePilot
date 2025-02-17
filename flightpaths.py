@@ -5,7 +5,7 @@ import math
 import torch
 
 
-FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage"]
+FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 
 
 def main():

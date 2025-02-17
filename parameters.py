@@ -3,7 +3,7 @@ import sys
 import logging
 from cflib.utils import uri_helper
 
-FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage"]
+FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 
 
 
@@ -41,7 +41,7 @@ def choose_model():
     return uri
 
 def choose_flightpath():
-    return FLIGHT_PATH[2]
+    return FLIGHT_PATH[4]
     output=""
     for fp in range(len(FLIGHT_PATH)):
         output=output+f"{fp} )  Flightpath: {FLIGHT_PATH[fp]} \n"
