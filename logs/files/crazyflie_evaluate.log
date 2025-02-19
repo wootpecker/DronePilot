@@ -1,0 +1,4 @@
+2025-02-19 12:31::19 -- [INFO] Logging Configuration Loaded.
+2025-02-19 12:31::19 -- [INFO] [DATA] Loading CSV from: data/GSL_TestPositioning_0.3.csv.
+2025-02-19 12:31::19 -- [INFO] [DATA] Columns: Time, X, Y, Z, DiffX, DiffY, DiffZ, Zrange, Gas1L, Gas1R
+2025-02-19 12:31::19 -- [INFO] Plottting.
