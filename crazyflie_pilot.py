@@ -3,7 +3,7 @@ import logs.logger as logger
 import logging
 import flightpaths
 import parameters
-
+import dynamic_plot
 import sys
 import time
 from threading import Event
@@ -68,17 +68,18 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         if not deck_attached_event.wait(timeout=5):
             logging.error('[EXIT] No flow deck detected!')
             print('[EXIT] No flow deck detected!')
-            #sys.exit(1)
+            sys.exit(1)
 
         scf.cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(1)
         scf.cf.param.set_value('kalman.resetEstimation', '0') 
         time.sleep(1)
         window_shape=init_windowshape(logconf)
-        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[15,15],distance=6)
+        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[12,12],pad=1,distance=distance)
         logconf.start()    
         time.sleep(1)
-        scf=set_initial_position(scf,flightheight)
+        #scf=set_initial_position(scf,flightheight)
+        #dynamic_plot.dynamic_plot(flightpath=flightpath,window_size=[100,100])
         #time.sleep(2)
         if(flightpath=="Nothing"):
             print("Flightpath: Nothing")
@@ -108,9 +109,15 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
 
 
 def fly_position_pattern(scf, flightheight):
+
     print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+    print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
 
     with MotionCommander(scf, default_height=flightheight) as mc:
+        fly_take_off(mc,flightheight)
+        mc.stop()      
+        set_starting_position()
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         time.sleep(3)
         print("0.3")
         mc.move_distance(0.3,0.0,0)
@@ -136,9 +143,8 @@ def fly_snake_pattern(scf, flightheight, coordinates):
         relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
     print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
-        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-        print(f"INITIAL_POSITION: {INITIAL_POSITION}")        
-        time.sleep(5)        
+        fly_take_off(mc,flightheight)      
+        time.sleep(2)        
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0) 
             time.sleep(0.1)
@@ -161,7 +167,8 @@ def fly_cage_pattern(scf, flightheight, coordinates):
         relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
     print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
-        time.sleep(3)        
+        fly_take_off(mc,flightheight)        
+        time.sleep(2)        
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0)
             time.sleep(0.1)
@@ -178,20 +185,30 @@ def fly_cage_pattern(scf, flightheight, coordinates):
     #for koordinate in coordinates:
 
 def fly_landing_position(mc):
-    print("landing")
+    print("Landing")
     difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
     print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
     print(f"INITIAL_POSITION: {INITIAL_POSITION}")
     print(f"difference: {difference}")     
     while(abs(difference[0])>0.1 or abs(difference[1])>0.1):
-        
         difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-        mc.move_distance(difference[0],difference[1],0)    
+        mc.move_distance(difference[0],difference[1],0)
+        time.sleep(2)   
         print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
         print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         print(f"difference: {difference}")        
-        time.sleep(2)
-
+        
+def fly_take_off(mc,flightheight):    
+    mc.stop()
+    time.sleep(0.5)
+    mc._cf.commander.send_hover_setpoint(0, 0, 0, flightheight)
+    time.sleep(2)
+    difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
+    print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+    print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+    print(f"difference: {difference}")
+    set_starting_position()     
+   
 
 def fly_start_land(scf, flightheight):
     with MotionCommander(scf, default_height=flightheight) as mc:
@@ -203,6 +220,9 @@ def fly_start_land(scf, flightheight):
         time.sleep(5)
         print("Take off Land")
 
+def set_starting_position():
+    global INITIAL_POSITION
+    INITIAL_POSITION=[POSITION_ESTIMATE[0],POSITION_ESTIMATE[1],0]
 
 
 def fly_landing(scf, flightheight):
@@ -232,10 +252,10 @@ def param_deck_flow(_, value_str):
 
 def log_pos_callback(timestamp, data, logconf):
     #print(data)
-    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION, INITIAL_POSITION
+    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION
+    #INITIAL_POSITION=[data['stateEstimate.x'], data['stateEstimate.y'], data['stateEstimate.z']]
     if START_TIME==None:
         START_TIME=timestamp
-        INITIAL_POSITION=[data['stateEstimate.x'], data['stateEstimate.y'], data['stateEstimate.z']]
     #t = int(time.time() * 1000)
     POSITION_ESTIMATE[0] = data['stateEstimate.x']
     POSITION_ESTIMATE[1] = data['stateEstimate.y']
@@ -249,11 +269,11 @@ def log_pos_callback(timestamp, data, logconf):
        # tsv_w = csv.writer(f, delimiter='\t')
         #tsv_w.writerow([int(t), format(POSITION_ESTIMATE[0], '.10f'), format(POSITION_ESTIMATE[1], '.10f'), format(POSITION_ESTIMATE[2], '.10f')])
 
-def set_initial_position(scf,flightheight):
-    scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
-    scf.cf.param.set_value('kalman.initialY', INITIAL_POSITION[1])
-    scf.cf.param.set_value('kalman.initialZ', flightheight)
-    return scf
+#def set_initial_position(scf,flightheight):
+  #  scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
+  #  scf.cf.param.set_value('kalman.initialY', INITIAL_POSITION[1])
+ #   scf.cf.param.set_value('kalman.initialZ', flightheight)
+  #  return scf
 
 def init_windowshape(logconf):
     #logconf.start()

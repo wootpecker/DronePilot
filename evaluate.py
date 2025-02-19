@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-
+import parameters
 
 
 LOGS_SAVE = True
@@ -12,7 +12,7 @@ FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = load_csv("TestPositioning")
+    df = load_csv(parameters.PARAMETERS[1])
     plot_values(df)
 
 def load_csv(file):       
@@ -36,7 +36,7 @@ def load_csv(file):
 
 
 
-def plot_values(df, window_size=[100,100]):
+def plot_values(df, window_size=[300,300]):
     logging.info("Plottting.")    
     df_plot=transform_column(df=df)
     X=df_plot['X']
@@ -47,7 +47,7 @@ def plot_values(df, window_size=[100,100]):
         #print(X.iloc[i], Y.iloc[i], Time.iloc[i])
         image[X.iloc[i], Y.iloc[i]]=Time.iloc[i]
     image.unsqueeze(-1)        
-    plt.imshow(image)
+    plt.imshow(image, cmap='turbo', origin="lower")
     #df.plot()
     plt.show()
 

@@ -57,7 +57,7 @@ def init_windowshape(logconf):
 
 
     
-def flightpath_to_coordinates(flightpath,window_shape=[30,30],distance=5,pad=2,start_zero=True):
+def flightpath_to_coordinates(flightpath,window_shape=[12,12],distance=5,pad=2,start_zero=True):
     if flightpath==FLIGHT_PATH[2]:
         coordinates=generate_coordinates_s_shape(window_shape,distance=distance,pad=pad,start_zero=start_zero)
     elif flightpath==FLIGHT_PATH[3]:
@@ -69,7 +69,7 @@ def flightpath_to_coordinates(flightpath,window_shape=[30,30],distance=5,pad=2,s
             value[0]=(10*value[0]+5)/100
             value[1]=(10*value[1]+5)/100
             print(f"x: {value[0]}, y: {value[1]}")
-    print(coordinates)
+    #print(coordinates)
     return coordinates
 
 def plot_more_images(images, title="", save=False):
