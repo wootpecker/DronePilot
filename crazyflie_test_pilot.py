@@ -7,6 +7,7 @@ import dynamic_plot
 import sys
 import time
 from threading import Event
+import pandas as pd
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -17,6 +18,7 @@ from cflib.positioning.position_hl_commander import PositionHlCommander
 from cflib.utils import uri_helper
 import csv
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 LOGS_SAVE = True
 #URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
@@ -25,18 +27,24 @@ deck_attached_event = Event()
 INITIAL_POSITION = [0, 0, 0]
 POSITION_ESTIMATE = [0, 0, 0]
 GAS_DISTRIBUTION = [0, 0, 0]
+DATASET = []
 FILENAME="GSL"
 START_TIME = None
 FILEPATH="data/test.csv"
 
+DATAFRAME=pd.DataFrame({'Time':[], 'X':[], 'Y':[], 'Z':[], 'DiffX':[], 'DiffY':[], 'DiffZ':[], 'Zrange':[], 'Gas1L':[], 'Gas1R':[]})
+
+
 def main():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot")
+    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_test_pilot")
     URI=parameters.choose_model()
     flightpath=parameters.choose_flightpath()
     flightheight=parameters.choose_flightheight()
     distance=parameters.choose_distance()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
-    
+    save_dataframe_to_csv()
+    save_dataset_to_csv()
+    print("DONE")
 
 def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50, distance=5):
     logging.info("Crazyflie takes measurements.")
@@ -251,23 +259,29 @@ def param_deck_flow(_, value_str):
 
 
 def log_pos_callback(timestamp, data, logconf):
-    #print(data)
-    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION
-    #INITIAL_POSITION=[data['stateEstimate.x'], data['stateEstimate.y'], data['stateEstimate.z']]
-    if START_TIME==None:
-        START_TIME=timestamp
-    #t = int(time.time() * 1000)
+    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION, DATASET, DATAFRAME
+    if START_TIME is None:
+        START_TIME = timestamp
+
     POSITION_ESTIMATE[0] = data['stateEstimate.x']
     POSITION_ESTIMATE[1] = data['stateEstimate.y']
     POSITION_ESTIMATE[2] = data['stateEstimate.z']
     GAS_DISTRIBUTION[0] = data['range.zrange']
     GAS_DISTRIBUTION[1] = data['sgp30.value1L']
     GAS_DISTRIBUTION[2] = data['sgp30.value1R']
-    save_to_csv(timestamp-START_TIME,POSITION_ESTIMATE,GAS_DISTRIBUTION)
+    new_row=pd.DataFrame({'Time':[timestamp - START_TIME], 'X':[format(data['stateEstimate.x'], '.10f')], 
+                          'Y':[format(data['stateEstimate.y'], '.10f')], 'Z':[format(data['stateEstimate.z'], '.10f')], 
+                          'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
+    DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
+    DATASET.append([timestamp - START_TIME, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+    # Save data to CSV asynchronously to avoid slowing down the callback
+    save_data_async(timestamp - START_TIME, POSITION_ESTIMATE, GAS_DISTRIBUTION)
 
-    #with open('/home/hujiao/Desktop/0.15-0.5_logging.tsv', 'a+', newline='') as f:
-       # tsv_w = csv.writer(f, delimiter='\t')
-        #tsv_w.writerow([int(t), format(POSITION_ESTIMATE[0], '.10f'), format(POSITION_ESTIMATE[1], '.10f'), format(POSITION_ESTIMATE[2], '.10f')])
+
+executor = ThreadPoolExecutor(max_workers=1)
+
+def save_data_async(t, position_estimate, gas_distribution):
+    executor.submit(save_to_csv, t, position_estimate, gas_distribution)
 
 #def set_initial_position(scf,flightheight):
   #  scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
@@ -297,17 +311,26 @@ def create_csv():
 
 
 
-def save_to_csv(t,position_estimate,gas_distribution):
+def save_to_csv(t, position_estimate, gas_distribution):
     with open(FILEPATH, 'a+', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow([t,format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f'),    format(position_estimate[0]-INITIAL_POSITION[0], '.10f'), format(position_estimate[1]-INITIAL_POSITION[1], '.10f'), format(position_estimate[2]-INITIAL_POSITION[2], '.10f')      , gas_distribution[0], gas_distribution[1], gas_distribution[2]])
+        csvwriter.writerow([t, format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f'),
+                            format(position_estimate[0] - INITIAL_POSITION[0], '.10f'), format(position_estimate[1] - INITIAL_POSITION[1], '.10f'),
+                            format(position_estimate[2] - INITIAL_POSITION[2], '.10f'), gas_distribution[0], gas_distribution[1], gas_distribution[2]])
 
-def save_to_csv2(t,position_estimate):
-    with open('data/test.tsv', 'a+', newline='') as f:
-        tsv_w = csv.writer(f, delimiter='\t')
-        #print(int(t), format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f'))
-        tsv_w.writerow([int(t), format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f')])
+def save_dataframe_to_csv():
+    target_dir_path = Path("data")
+    file_path = target_dir_path / f"{FILENAME}_DATAFRAME.csv"
+    DATAFRAME.to_csv(file_path, index=False)
 
+def save_dataset_to_csv():
+    target_dir_path = Path("data")
+    file_path = target_dir_path / f"{FILENAME}_DATASET.csv"
+    with open(file_path, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'DiffX', 'DiffY', 'DiffZ', 'Zrange', 'Gas1L', 'Gas1R'])
+        for data in DATASET:
+            csvwriter.writerow(data)
 
 if __name__ == '__main__':
     main()
