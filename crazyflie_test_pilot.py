@@ -83,9 +83,9 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         scf.cf.param.set_value('kalman.resetEstimation', '0') 
         time.sleep(1)
         window_shape=init_windowshape(logconf)
-        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[12,12],pad=1,distance=distance)
+        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[20,20],pad=1,distance=distance)
         logconf.start()    
-        time.sleep(1)
+        #time.sleep(1)
         #scf=set_initial_position(scf,flightheight)
         #dynamic_plot.dynamic_plot(flightpath=flightpath,window_size=[100,100])
         #time.sleep(2)
@@ -194,17 +194,16 @@ def fly_cage_pattern(scf, flightheight, coordinates):
 
 def fly_landing_position(mc):
     print("Landing")
-    difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-    print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-    print(f"INITIAL_POSITION: {INITIAL_POSITION}")
-    print(f"difference: {difference}")     
+    difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]  
     while(abs(difference[0])>0.1 or abs(difference[1])>0.1):
-        difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-        mc.move_distance(difference[0],difference[1],0)
-        time.sleep(2)   
         print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
         print(f"INITIAL_POSITION: {INITIAL_POSITION}")
-        print(f"difference: {difference}")        
+        print(f"difference: {difference}")          
+        mc.move_distance(difference[0],difference[1],0)
+        time.sleep(0.5)   
+        difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
+
+      
         
 def fly_take_off(mc,flightheight):    
     mc.stop()
@@ -272,16 +271,17 @@ def log_pos_callback(timestamp, data, logconf):
     new_row=pd.DataFrame({'Time':[timestamp - START_TIME], 'X':[format(data['stateEstimate.x'], '.10f')], 
                           'Y':[format(data['stateEstimate.y'], '.10f')], 'Z':[format(data['stateEstimate.z'], '.10f')], 
                           'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
-    DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
+    DATAFRAME=pd.concat([DATAFRAME,new_row], ignore_index=True)
+    #DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
     DATASET.append([timestamp - START_TIME, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
     # Save data to CSV asynchronously to avoid slowing down the callback
-    save_data_async(timestamp - START_TIME, POSITION_ESTIMATE, GAS_DISTRIBUTION)
+    #save_data_async(timestamp - START_TIME, POSITION_ESTIMATE, GAS_DISTRIBUTION)
 
 
-executor = ThreadPoolExecutor(max_workers=1)
+#executor = ThreadPoolExecutor(max_workers=1)
 
-def save_data_async(t, position_estimate, gas_distribution):
-    executor.submit(save_to_csv, t, position_estimate, gas_distribution)
+#def save_data_async(t, position_estimate, gas_distribution):
+#    executor.submit(save_to_csv, t, position_estimate, gas_distribution)
 
 #def set_initial_position(scf,flightheight):
   #  scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
@@ -325,10 +325,11 @@ def save_dataframe_to_csv():
 
 def save_dataset_to_csv():
     target_dir_path = Path("data")
-    file_path = target_dir_path / f"{FILENAME}_DATASET.csv"
+    target_dir_path.mkdir(parents=True, exist_ok=True)    
+    file_path = target_dir_path / f"{FILENAME}.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'DiffX', 'DiffY', 'DiffZ', 'Zrange', 'Gas1L', 'Gas1R'])
+        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
         for data in DATASET:
             csvwriter.writerow(data)
 

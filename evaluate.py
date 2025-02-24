@@ -52,8 +52,8 @@ def plot_values(df, window_size=[300,300]):
     plt.show()
 
 def transform_column(df):
-    X=transform_m_mm(df_column=df['X'])
-    Y=transform_m_mm(df_column=df['Y'])
+    X=transform_m_cm(df_column=df['X'])
+    Y=transform_m_cm(df_column=df['Y'])
     Time = df['Time']
 
     old_x=-1
@@ -76,7 +76,7 @@ def transform_column(df):
     #result['X'].min
     return result
 
-def transform_m_mm(df_column):
+def transform_m_cm(df_column):
     if df_column.max() < 10:
         df_column = df_column * 100
         df_column = df_column+abs(df_column.min())
