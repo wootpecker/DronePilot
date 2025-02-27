@@ -42,7 +42,7 @@ def main():
     flightheight=parameters.choose_flightheight()
     distance=parameters.choose_distance()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
-    save_dataframe_to_csv()
+    #save_dataframe_to_csv()
     save_dataset_to_csv()
     print("DONE")
 
@@ -67,10 +67,10 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         #set_initial_position(scf, 0, 0, 0)
 
         scf.cf.log.add_config(logconf)
-        global START_TIME,FILENAME
+        global FILENAME
         FILENAME=f"GSL_{flightpath}_{flightheight}"
         #START_TIME = time.time()*1000
-        create_csv()
+        #create_csv()
         logconf.data_received_cb.add_callback(log_pos_callback)
 
         if not deck_attached_event.wait(timeout=5):
@@ -268,10 +268,10 @@ def log_pos_callback(timestamp, data, logconf):
     GAS_DISTRIBUTION[0] = data['range.zrange']
     GAS_DISTRIBUTION[1] = data['sgp30.value1L']
     GAS_DISTRIBUTION[2] = data['sgp30.value1R']
-    new_row=pd.DataFrame({'Time':[timestamp - START_TIME], 'X':[format(data['stateEstimate.x'], '.10f')], 
-                          'Y':[format(data['stateEstimate.y'], '.10f')], 'Z':[format(data['stateEstimate.z'], '.10f')], 
-                          'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
-    DATAFRAME=pd.concat([DATAFRAME,new_row], ignore_index=True)
+    #new_row=pd.DataFrame({'Time':[timestamp - START_TIME], 'X':[format(data['stateEstimate.x'], '.10f')], 
+    #                      'Y':[format(data['stateEstimate.y'], '.10f')], 'Z':[format(data['stateEstimate.z'], '.10f')], 
+    #                      'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
+    #DATAFRAME=pd.concat([DATAFRAME,new_row], ignore_index=True)
     #DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
     DATASET.append([timestamp - START_TIME, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
     # Save data to CSV asynchronously to avoid slowing down the callback
@@ -318,10 +318,10 @@ def save_to_csv(t, position_estimate, gas_distribution):
                             format(position_estimate[0] - INITIAL_POSITION[0], '.10f'), format(position_estimate[1] - INITIAL_POSITION[1], '.10f'),
                             format(position_estimate[2] - INITIAL_POSITION[2], '.10f'), gas_distribution[0], gas_distribution[1], gas_distribution[2]])
 
-def save_dataframe_to_csv():
-    target_dir_path = Path("data")
-    file_path = target_dir_path / f"{FILENAME}_DATAFRAME.csv"
-    DATAFRAME.to_csv(file_path, index=False)
+#def save_dataframe_to_csv():
+#    target_dir_path = Path("data")
+#    file_path = target_dir_path / f"{FILENAME}_DATAFRAME.csv"
+#    DATAFRAME.to_csv(file_path, index=False)
 
 def save_dataset_to_csv():
     target_dir_path = Path("data")

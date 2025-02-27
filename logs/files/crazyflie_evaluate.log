@@ -1,4 +1,4 @@
-2025-02-19 23:48::42 -- [INFO] Logging Configuration Loaded.
-2025-02-19 23:48::42 -- [INFO] [DATA] Loading CSV from: data/GSL_Snake_0.3.csv.
-2025-02-19 23:48::42 -- [INFO] [DATA] Columns: Time, X, Y, Z, DiffX, DiffY, DiffZ, Zrange, Gas1L, Gas1R
-2025-02-19 23:48::42 -- [INFO] Plottting.
+2025-02-25 13:09::24 -- [INFO] Logging Configuration Loaded.
+2025-02-25 13:09::24 -- [INFO] [DATA] Loading CSV from: data/GSL_Snake_0.3.csv.
+2025-02-25 13:09::24 -- [INFO] [DATA] Columns: Time, X, Y, Z, Zrange, Gas1L, Gas1R
+2025-02-25 13:09::24 -- [INFO] Plottting.
