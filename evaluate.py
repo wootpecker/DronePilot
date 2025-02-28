@@ -9,7 +9,8 @@ import parameters
 
 LOGS_SAVE = False
 FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
-WINDOW_SIZE=[300,300]
+WINDOW_SIZE=[400,400]
+
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
     df = load_csv(parameters.PARAMETERS[1])
@@ -113,7 +114,7 @@ def transform_column(df):
     for i, x in enumerate(X):
         y = Y[i]
         #print(Z[i])
-        if x==old_x and y == old_y or Z[i]<20:
+        if x==old_x and y == old_y:# or Z[i]<20:
             X_copy.drop(i, inplace=True)
             Y_copy.drop(i, inplace=True)
             Time.drop(i, inplace=True)

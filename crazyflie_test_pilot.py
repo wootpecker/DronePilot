@@ -28,6 +28,7 @@ INITIAL_POSITION = [0, 0, 0]
 POSITION_ESTIMATE = [0, 0, 0]
 GAS_DISTRIBUTION = [0, 0, 0]
 DATASET = []
+DATASET2 = []
 FILENAME="GSL"
 START_TIME = None
 FILEPATH="data/test.csv"
@@ -155,7 +156,7 @@ def fly_snake_pattern(scf, flightheight, coordinates):
         time.sleep(2)        
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0) 
-            time.sleep(0.1)
+            #time.sleep(0.1)
             if(koordinate[1]):
                 print("turn")
        # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
@@ -179,7 +180,7 @@ def fly_cage_pattern(scf, flightheight, coordinates):
         time.sleep(2)        
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0)
-            time.sleep(0.1)
+            #time.sleep(0.1)
 
         fly_landing_position(mc)    
        # difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
@@ -273,15 +274,24 @@ def log_pos_callback(timestamp, data, logconf):
     #                      'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
     #DATAFRAME=pd.concat([DATAFRAME,new_row], ignore_index=True)
     #DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
+    add_dataset_async(timestamp - START_TIME, data)
     DATASET.append([timestamp - START_TIME, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+    
+
     # Save data to CSV asynchronously to avoid slowing down the callback
     #save_data_async(timestamp - START_TIME, POSITION_ESTIMATE, GAS_DISTRIBUTION)
 
 
-#executor = ThreadPoolExecutor(max_workers=1)
+executor = ThreadPoolExecutor(max_workers=1)
 
-#def save_data_async(t, position_estimate, gas_distribution):
-#    executor.submit(save_to_csv, t, position_estimate, gas_distribution)
+def add_dataset_async(t, data):
+    executor.submit(save_to_list, t, data)
+
+def save_to_list(t, data):
+    global DATASET2
+    DATASET2.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+
+
 
 #def set_initial_position(scf,flightheight):
   #  scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
@@ -326,12 +336,19 @@ def save_to_csv(t, position_estimate, gas_distribution):
 def save_dataset_to_csv():
     target_dir_path = Path("data")
     target_dir_path.mkdir(parents=True, exist_ok=True)    
-    file_path = target_dir_path / f"{FILENAME}.csv"
+    file_path = target_dir_path / f"{FILENAME}_1.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
         for data in DATASET:
             csvwriter.writerow(data)
+
+    file_path = target_dir_path / f"{FILENAME}_2.csv"
+    with open(file_path, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+        for data in DATASET2:
+            csvwriter.writerow(data)            
 
 if __name__ == '__main__':
     main()
