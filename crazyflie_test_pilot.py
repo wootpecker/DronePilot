@@ -8,7 +8,6 @@ import sys
 import time
 from threading import Event
 import pandas as pd
-
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
@@ -27,13 +26,13 @@ deck_attached_event = Event()
 INITIAL_POSITION = [0, 0, 0]
 POSITION_ESTIMATE = [0, 0, 0]
 GAS_DISTRIBUTION = [0, 0, 0]
-DATASET = []
-DATASET2 = []
+DATASET_FLIGHTPATH = []
+DATASET_COMPLETE = []
 FILENAME="GSL"
 START_TIME = None
+START_TIME_FLIGHTPATH = None
 FILEPATH="data/test.csv"
 
-DATAFRAME=pd.DataFrame({'Time':[], 'X':[], 'Y':[], 'Z':[], 'DiffX':[], 'DiffY':[], 'DiffZ':[], 'Zrange':[], 'Gas1L':[], 'Gas1R':[]})
 
 
 def main():
@@ -43,7 +42,6 @@ def main():
     flightheight=parameters.choose_flightheight()
     distance=parameters.choose_distance()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
-    #save_dataframe_to_csv()
     save_dataset_to_csv()
     print("DONE")
 
@@ -79,10 +77,10 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
             print('[EXIT] No flow deck detected!')
             sys.exit(1)
 
-        scf.cf.param.set_value('kalman.resetEstimation', '1')
-        time.sleep(1)
-        scf.cf.param.set_value('kalman.resetEstimation', '0') 
-        time.sleep(1)
+        #scf.cf.param.set_value('kalman.resetEstimation', '1')
+        #time.sleep(1)
+        #scf.cf.param.set_value('kalman.resetEstimation', '0') 
+        #time.sleep(1)
         window_shape=init_windowshape(logconf)
         coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[20,20],pad=1,distance=distance)
         logconf.start()    
@@ -243,6 +241,10 @@ def fly_landing(scf, flightheight):
         print("mc.stop")
         time.sleep(5)
 
+def reset_log():
+    global START_TIME_FLIGHTPATH, GAS_DISTRIBUTION, DATASET_FLIGHTPATH
+    START_TIME_FLIGHTPATH = None
+    DATASET_FLIGHTPATH = []
 
 
 def param_deck_flow(_, value_str):
@@ -259,23 +261,16 @@ def param_deck_flow(_, value_str):
 
 
 def log_pos_callback(timestamp, data, logconf):
-    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION, DATASET, DATAFRAME
-    if START_TIME is None:
-        START_TIME = timestamp
-
+    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION, DATASET_FLIGHTPATH,START_TIME_FLIGHTPATH       
     POSITION_ESTIMATE[0] = data['stateEstimate.x']
     POSITION_ESTIMATE[1] = data['stateEstimate.y']
     POSITION_ESTIMATE[2] = data['stateEstimate.z']
     GAS_DISTRIBUTION[0] = data['range.zrange']
     GAS_DISTRIBUTION[1] = data['sgp30.value1L']
     GAS_DISTRIBUTION[2] = data['sgp30.value1R']
-    #new_row=pd.DataFrame({'Time':[timestamp - START_TIME], 'X':[format(data['stateEstimate.x'], '.10f')], 
-    #                      'Y':[format(data['stateEstimate.y'], '.10f')], 'Z':[format(data['stateEstimate.z'], '.10f')], 
-    #                      'Zrange':[data['range.zrange']], 'Gas1L':[data['sgp30.value1L']], 'Gas1R':[data['sgp30.value1R']]})
-    #DATAFRAME=pd.concat([DATAFRAME,new_row], ignore_index=True)
-    #DATAFRAME=DATAFRAME.append(new_row, ignore_index=True)
-    add_dataset_async(timestamp - START_TIME, data)
-    DATASET.append([timestamp - START_TIME, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+
+    add_dataset_async(timestamp, data)
+    DATASET_FLIGHTPATH.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
     
 
     # Save data to CSV asynchronously to avoid slowing down the callback
@@ -288,8 +283,8 @@ def add_dataset_async(t, data):
     executor.submit(save_to_list, t, data)
 
 def save_to_list(t, data):
-    global DATASET2
-    DATASET2.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+    global DATASET_COMPLETE
+    DATASET_COMPLETE.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
 
 
 
@@ -328,10 +323,7 @@ def save_to_csv(t, position_estimate, gas_distribution):
                             format(position_estimate[0] - INITIAL_POSITION[0], '.10f'), format(position_estimate[1] - INITIAL_POSITION[1], '.10f'),
                             format(position_estimate[2] - INITIAL_POSITION[2], '.10f'), gas_distribution[0], gas_distribution[1], gas_distribution[2]])
 
-#def save_dataframe_to_csv():
-#    target_dir_path = Path("data")
-#    file_path = target_dir_path / f"{FILENAME}_DATAFRAME.csv"
-#    DATAFRAME.to_csv(file_path, index=False)
+
 
 def save_dataset_to_csv():
     target_dir_path = Path("data")
@@ -340,14 +332,14 @@ def save_dataset_to_csv():
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
-        for data in DATASET:
+        for data in DATASET_FLIGHTPATH:
             csvwriter.writerow(data)
 
     file_path = target_dir_path / f"{FILENAME}_2.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
-        for data in DATASET2:
+        for data in DATASET_COMPLETE:
             csvwriter.writerow(data)            
 
 if __name__ == '__main__':

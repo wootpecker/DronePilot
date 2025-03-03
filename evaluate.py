@@ -13,17 +13,19 @@ WINDOW_SIZE=[400,400]
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = load_csv(parameters.PARAMETERS[1])
+    df = load_csv(parameters.PARAMETERS[1],"test3")
     #plot_flightpath(df)
     plot_gdm(df)
 
-def load_csv(file):       
-    if file == "first":
+def load_csv(flightpath, file=None):       
+    if flightpath == "first":
         files = os.listdir("data")
         files = files[0]
         file_path=f"data/{files}"
+    elif file:
+        file_path=f"data/GSL_{flightpath}_0.3_{file}.csv"        
     else:
-        file_path=f"data/GSL_{file}_0.3.csv"
+        file_path=f"data/GSL_{flightpath}_0.3.csv"
     logging.info(f"[DATA] Loading CSV from: {file_path}.")         
     try:    
         df = pd.read_csv(file_path)
