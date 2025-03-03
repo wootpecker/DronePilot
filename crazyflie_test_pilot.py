@@ -29,7 +29,7 @@ GAS_DISTRIBUTION = [0, 0, 0]
 DATASET_FLIGHTPATH = []
 DATASET_COMPLETE = []
 FILENAME="GSL"
-START_TIME = None
+START_TIME = False
 START_TIME_FLIGHTPATH = None
 FILEPATH="data/test.csv"
 
@@ -68,8 +68,6 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         scf.cf.log.add_config(logconf)
         global FILENAME
         FILENAME=f"GSL_{flightpath}_{flightheight}"
-        #START_TIME = time.time()*1000
-        #create_csv()
         logconf.data_received_cb.add_callback(log_pos_callback)
 
         if not deck_attached_event.wait(timeout=5):
@@ -144,6 +142,8 @@ def fly_position_pattern(scf, flightheight):
 
 
 def fly_snake_pattern(scf, flightheight, coordinates):
+    global START_TIME
+    START_TIME = True
     relative_positions=[]
     coordinates.insert(0,[0,0])
     for x in range(len(coordinates)-1):
@@ -151,12 +151,13 @@ def fly_snake_pattern(scf, flightheight, coordinates):
     print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
         fly_take_off(mc,flightheight)      
-        time.sleep(2)        
+        time.sleep(1)        
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0) 
             #time.sleep(0.1)
             if(koordinate[1]):
                 print("turn")
+        START_TIME = False
        # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
         #print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         fly_landing_position(mc)  
@@ -261,16 +262,16 @@ def param_deck_flow(_, value_str):
 
 
 def log_pos_callback(timestamp, data, logconf):
-    global POSITION_ESTIMATE, START_TIME, GAS_DISTRIBUTION, DATASET_FLIGHTPATH,START_TIME_FLIGHTPATH       
+    global POSITION_ESTIMATE, START_TIME, DATASET_FLIGHTPATH       
     POSITION_ESTIMATE[0] = data['stateEstimate.x']
     POSITION_ESTIMATE[1] = data['stateEstimate.y']
     POSITION_ESTIMATE[2] = data['stateEstimate.z']
-    GAS_DISTRIBUTION[0] = data['range.zrange']
-    GAS_DISTRIBUTION[1] = data['sgp30.value1L']
-    GAS_DISTRIBUTION[2] = data['sgp30.value1R']
+    #GAS_DISTRIBUTION[1] = data['sgp30.value1L']
+    #GAS_DISTRIBUTION[2] = data['sgp30.value1R']
 
     add_dataset_async(timestamp, data)
-    DATASET_FLIGHTPATH.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+    if START_TIME:
+        DATASET_FLIGHTPATH.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['sgp30.value1L'],data['sgp30.value1R']])
     
 
     # Save data to CSV asynchronously to avoid slowing down the callback
@@ -284,7 +285,7 @@ def add_dataset_async(t, data):
 
 def save_to_list(t, data):
     global DATASET_COMPLETE
-    DATASET_COMPLETE.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['range.zrange'],data['sgp30.value1L'],data['sgp30.value1R']])
+    DATASET_COMPLETE.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'),data['sgp30.value1L'],data['sgp30.value1R']])
 
 
 
@@ -303,17 +304,6 @@ def init_windowshape(logconf):
     
 
 
-def create_csv():
-    global FILEPATH
-    target_dir_path = Path("data")
-    target_dir_path.mkdir(parents=True, exist_ok=True)
-    file_path = target_dir_path / f"{FILENAME}.csv"
-    FILEPATH=file_path
-    file_path.touch(exist_ok=True)
-    with open(file_path, 'w', newline='') as f:
-        tsv_w = csv.writer(f, delimiter=',')
-        tsv_w.writerow(['Time', 'X', 'Y', 'Z', 'DiffX', 'DiffY', 'DiffZ', 'Zrange', 'Gas1L', 'Gas1R'])
-
 
 
 def save_to_csv(t, position_estimate, gas_distribution):
@@ -328,18 +318,22 @@ def save_to_csv(t, position_estimate, gas_distribution):
 def save_dataset_to_csv():
     target_dir_path = Path("data")
     target_dir_path.mkdir(parents=True, exist_ok=True)    
-    file_path = target_dir_path / f"{FILENAME}_1.csv"
+    file_path = target_dir_path / f"{FILENAME}_F.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+        start_time = DATASET_FLIGHTPATH[0][0]            
         for data in DATASET_FLIGHTPATH:
+            data[0] -= start_time
             csvwriter.writerow(data)
 
-    file_path = target_dir_path / f"{FILENAME}_2.csv"
+    file_path = target_dir_path / f"{FILENAME}_C.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+        start_time = DATASET_COMPLETE[0][0]            
         for data in DATASET_COMPLETE:
+            data[0] -= start_time
             csvwriter.writerow(data)            
 
 if __name__ == '__main__':
