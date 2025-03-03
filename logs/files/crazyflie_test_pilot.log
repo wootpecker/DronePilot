@@ -1,45 +1,44 @@
-2025-02-28 14:17::47 -- [INFO] Logging Configuration Loaded.
-2025-02-28 14:17::47 -- [INFO] [INIT] Initialize Crazyflie drivers.
-2025-02-28 14:17::47 -- [INFO] [INIT] Scanning interfaces for Crazyflies...
-2025-02-28 14:17::47 -- [INFO] v0.53 dongle with serial N/A found
-2025-02-28 14:17::48 -- [INFO] Looking for devices....
-2025-02-28 14:17::48 -- [INFO] Initialized PRRT driver.
-2025-02-28 14:17::48 -- [INFO] v0.53 dongle with serial N/A found
-2025-02-28 14:17::49 -- [INFO] Looking for devices....
-2025-02-28 14:17::49 -- [INFO] Initialized PRRT driver.
-2025-02-28 14:17::49 -- [INFO] v0.53 dongle with serial N/A found
-2025-02-28 14:17::51 -- [INFO] Looking for devices....
-2025-02-28 14:17::51 -- [INFO] Initialized PRRT driver.
-2025-02-28 14:17::51 -- [INFO] v0.53 dongle with serial N/A found
-2025-02-28 14:17::52 -- [INFO] Looking for devices....
-2025-02-28 14:17::52 -- [INFO] Initialized PRRT driver.
-2025-02-28 14:17::52 -- [INFO] v0.53 dongle with serial N/A found
-2025-02-28 14:17::53 -- [INFO] Looking for devices....
-2025-02-28 14:17::53 -- [INFO] Initialized PRRT driver.
-2025-02-28 14:17::53 -- [INFO] Crazyflies found: radio://0/80/2M/E7E7E7E704
-2025-02-28 14:17::53 -- [INFO] One Crazyflie found: ['E7E7E7E704'].
-2025-02-28 14:17::53 -- [INFO] Crazyflie Pilot Started with E7E7E7E704.
-2025-02-28 14:17::53 -- [INFO] Crazyflie takes measurements.
-2025-02-28 14:17::53 -- [INFO] Callback->Connection initialized[radio://0/80/2M/E7E7E7E704]
-2025-02-28 14:17::53 -- [INFO] We are connected[radio://0/80/2M/E7E7E7E704], request connection setup
-2025-02-28 14:17::53 -- [INFO] Request _request_protocol_version()
-2025-02-28 14:17::53 -- [INFO] Callback->Connected to [radio://0/80/2M/E7E7E7E704]
-2025-02-28 14:17::53 -- [INFO] Have successfully stopped logging for id=1
-2025-02-28 14:17::53 -- [INFO] _crt_service_callback
-2025-02-28 14:17::53 -- [INFO] Request protocol version
-2025-02-28 14:17::53 -- [INFO] _platform_callback
-2025-02-28 14:17::53 -- [INFO] Protocol version (platform): 4
-2025-02-28 14:17::53 -- [INFO] TOC for port [5] found in cache
-2025-02-28 14:17::53 -- [INFO] Log TOC finished updating
-2025-02-28 14:17::53 -- [INFO] 10 memories found
-2025-02-28 14:17::54 -- [INFO] Memories finished updating
-2025-02-28 14:17::54 -- [INFO] TOC for port [2] found in cache
-2025-02-28 14:17::54 -- [INFO] Param TOC finished updating
-2025-02-28 14:17::54 -- [INFO] Callback->Connection setup finished [radio://0/80/2M/E7E7E7E704]
-2025-02-28 14:17::54 -- [INFO] Deck Flow Value: 1
-2025-02-28 14:17::54 -- [INFO] Flow Deck is attached!
-2025-02-28 14:17::55 -- [INFO] All parameters updated
-2025-02-28 14:17::55 -- [INFO] Callback->Connection completed [radio://0/80/2M/E7E7E7E704]
-2025-02-28 14:17::57 -- [INFO] Have successfully started logging for id=1
-2025-02-28 14:18::00 -- [INFO] Closing link
-2025-02-28 14:18::00 -- [INFO] Callback->Disconnected from [radio://0/80/2M/E7E7E7E704]
+2025-03-03 14:16::44 -- [INFO] Logging Configuration Loaded.
+2025-03-03 14:16::44 -- [INFO] [INIT] Initialize Crazyflie drivers.
+2025-03-03 14:16::44 -- [INFO] [INIT] Scanning interfaces for Crazyflies...
+2025-03-03 14:16::44 -- [INFO] v0.53 dongle with serial N/A found
+2025-03-03 14:16::45 -- [INFO] Looking for devices....
+2025-03-03 14:16::45 -- [INFO] Initialized PRRT driver.
+2025-03-03 14:16::45 -- [INFO] v0.53 dongle with serial N/A found
+2025-03-03 14:16::46 -- [INFO] Looking for devices....
+2025-03-03 14:16::46 -- [INFO] Initialized PRRT driver.
+2025-03-03 14:16::46 -- [INFO] v0.53 dongle with serial N/A found
+2025-03-03 14:16::47 -- [INFO] Looking for devices....
+2025-03-03 14:16::47 -- [INFO] Initialized PRRT driver.
+2025-03-03 14:16::47 -- [INFO] v0.53 dongle with serial N/A found
+2025-03-03 14:16::48 -- [INFO] Looking for devices....
+2025-03-03 14:16::48 -- [INFO] Initialized PRRT driver.
+2025-03-03 14:16::48 -- [INFO] v0.53 dongle with serial N/A found
+2025-03-03 14:16::49 -- [INFO] Looking for devices....
+2025-03-03 14:16::49 -- [INFO] Initialized PRRT driver.
+2025-03-03 14:16::49 -- [INFO] Crazyflies found: radio://0/80/2M/E7E7E7E704
+2025-03-03 14:16::49 -- [INFO] One Crazyflie found: ['E7E7E7E704'].
+2025-03-03 14:16::49 -- [INFO] Crazyflie Pilot Started with E7E7E7E704.
+2025-03-03 14:16::49 -- [INFO] Crazyflie takes measurements.
+2025-03-03 14:16::49 -- [INFO] Callback->Connection initialized[radio://0/80/2M/E7E7E7E704]
+2025-03-03 14:16::49 -- [INFO] We are connected[radio://0/80/2M/E7E7E7E704], request connection setup
+2025-03-03 14:16::49 -- [INFO] Request _request_protocol_version()
+2025-03-03 14:16::49 -- [INFO] Callback->Connected to [radio://0/80/2M/E7E7E7E704]
+2025-03-03 14:16::49 -- [INFO] _crt_service_callback
+2025-03-03 14:16::49 -- [INFO] Request protocol version
+2025-03-03 14:16::49 -- [INFO] _platform_callback
+2025-03-03 14:16::49 -- [INFO] Protocol version (platform): 4
+2025-03-03 14:16::50 -- [INFO] TOC for port [5] found in cache
+2025-03-03 14:16::50 -- [INFO] Log TOC finished updating
+2025-03-03 14:16::50 -- [INFO] 10 memories found
+2025-03-03 14:16::50 -- [INFO] Memories finished updating
+2025-03-03 14:16::50 -- [INFO] TOC for port [2] found in cache
+2025-03-03 14:16::50 -- [INFO] Param TOC finished updating
+2025-03-03 14:16::50 -- [INFO] Callback->Connection setup finished [radio://0/80/2M/E7E7E7E704]
+2025-03-03 14:16::51 -- [INFO] Deck Flow Value: 1
+2025-03-03 14:16::51 -- [INFO] Flow Deck is attached!
+2025-03-03 14:16::51 -- [INFO] Have successfully started logging for id=1
+2025-03-03 14:16::51 -- [INFO] All parameters updated
+2025-03-03 14:16::51 -- [INFO] Callback->Connection completed [radio://0/80/2M/E7E7E7E704]
+2025-03-03 14:17::11 -- [INFO] Closing link
+2025-03-03 14:17::11 -- [INFO] Callback->Disconnected from [radio://0/80/2M/E7E7E7E704]

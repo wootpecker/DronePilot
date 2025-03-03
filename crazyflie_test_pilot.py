@@ -57,13 +57,14 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         time.sleep(1)
 
         logconf = LogConfig(name='Position', period_in_ms=10)
-        logconf.add_variable('stateEstimate.x', 'float')
+        logconf.add_variable('stateEstimate.x', 'float')#kalman.stateX
         logconf.add_variable('stateEstimate.y', 'float')
         logconf.add_variable('stateEstimate.z', 'float')
         logconf.add_variable('range.zrange', 'uint16_t')
         logconf.add_variable('sgp30.value1L', 'uint16_t')   #configuration_data.py
         logconf.add_variable('sgp30.value1R', 'uint16_t')        
-        #set_initial_position(scf, 0, 0, 0)
+        #set_initial_position(scf, 0, 0, 0)    x = data['kalman.stateX']
+
 
         scf.cf.log.add_config(logconf)
         global FILENAME
@@ -169,6 +170,8 @@ def fly_snake_pattern(scf, flightheight, coordinates):
 
 
 def fly_cage_pattern(scf, flightheight, coordinates):
+    global START_TIME
+    START_TIME = True    
     relative_positions=[]
     coordinates.insert(0,[0,0])
     for x in range(len(coordinates)-1):
@@ -180,6 +183,7 @@ def fly_cage_pattern(scf, flightheight, coordinates):
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0)
             #time.sleep(0.1)
+        START_TIME = False
 
         fly_landing_position(mc)    
        # difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
@@ -317,15 +321,16 @@ def save_to_csv(t, position_estimate, gas_distribution):
 
 def save_dataset_to_csv():
     target_dir_path = Path("data")
-    target_dir_path.mkdir(parents=True, exist_ok=True)    
-    file_path = target_dir_path / f"{FILENAME}_F.csv"
-    with open(file_path, 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
-        start_time = DATASET_FLIGHTPATH[0][0]            
-        for data in DATASET_FLIGHTPATH:
-            data[0] -= start_time
-            csvwriter.writerow(data)
+    target_dir_path.mkdir(parents=True, exist_ok=True) 
+    if  DATASET_FLIGHTPATH:
+        file_path = target_dir_path / f"{FILENAME}_F.csv"
+        with open(file_path, 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile, delimiter=',')
+            csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+            start_time = DATASET_FLIGHTPATH[0][0]            
+            for data in DATASET_FLIGHTPATH:
+                data[0] -= start_time
+                csvwriter.writerow(data)
 
     file_path = target_dir_path / f"{FILENAME}_C.csv"
     with open(file_path, 'w', newline='') as csvfile:

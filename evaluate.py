@@ -13,7 +13,7 @@ WINDOW_SIZE=[400,400]
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = load_csv(parameters.PARAMETERS[1],"test3")
+    df = load_csv(parameters.PARAMETERS[1],"F")
     #plot_flightpath(df)
     plot_gdm(df)
 
@@ -25,7 +25,7 @@ def load_csv(flightpath, file=None):
     elif file:
         file_path=f"data/GSL_{flightpath}_0.3_{file}.csv"        
     else:
-        file_path=f"data/GSL_{flightpath}_0.3.csv"
+        file_path=f"data/GSL_{flightpath}_0.3_C.csv"
     logging.info(f"[DATA] Loading CSV from: {file_path}.")         
     try:    
         df = pd.read_csv(file_path)
@@ -68,9 +68,9 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
     imageGasL=imageGasL.unsqueeze(-1)
     imageGasR=imageGasR.unsqueeze(-1)   
     fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(imageGasL, origin="lower")
+    ax1.imshow(imageGasL, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax1.set_title('Gas Distribution Left')
-    ax2.imshow(imageGasR, origin="lower")
+    ax2.imshow(imageGasR, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax2.set_title('Gas Distribution Right')
     #fig,ax=plt.subplot(1, 2, 1)
     #fig.add_subplot
