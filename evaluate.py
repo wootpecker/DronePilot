@@ -9,12 +9,12 @@ import parameters
 
 LOGS_SAVE = False
 FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
-WINDOW_SIZE=[400,400]
+WINDOW_SIZE=[250,250]
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
     df = load_csv(parameters.PARAMETERS[1],"F")
-    #plot_flightpath(df)
+    plot_flightpath(df)
     plot_gdm(df)
 
 def load_csv(flightpath, file=None):       

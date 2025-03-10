@@ -56,7 +56,7 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
                                              cb=param_deck_flow)
         time.sleep(1)
 
-        logconf = LogConfig(name='Position', period_in_ms=10)
+        logconf = LogConfig(name='Position', period_in_ms=100)
         logconf.add_variable('stateEstimate.x', 'float')#kalman.stateX
         logconf.add_variable('stateEstimate.y', 'float')
         logconf.add_variable('stateEstimate.z', 'float')
@@ -87,6 +87,11 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         #scf=set_initial_position(scf,flightheight)
         #dynamic_plot.dynamic_plot(flightpath=flightpath,window_size=[100,100])
         #time.sleep(2)
+        cf = scf.cf
+        cf.param.set_value('kalman.resetEstimation', '1')
+        time.sleep(0.1)
+        cf.param.set_value('kalman.resetEstimation', '0')
+        time.sleep(2)
         if(flightpath=="Nothing"):
             print("Flightpath: Nothing")
             time.sleep(20)
@@ -95,11 +100,10 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         if(flightpath=="StartLand"):
             print("Flightpath: StartLand")            
             fly_start_land(scf, flightheight)
-        if(flightpath=="TestPositioning"):
+        elif(flightpath=="TestPositioning"):
             print("Flightpath: TestPositioning")            
-            fly_position_pattern(scf,flightheight)
-
-        if(flightpath=="Snake"):
+            fly_position_pattern(scf,flightheight)        
+        elif(flightpath=="Snake"):
             print("Flightpath: Snake")                        
             fly_snake_pattern(scf, flightheight, coordinates)
         elif(flightpath=="Cage"):
@@ -144,18 +148,33 @@ def fly_position_pattern(scf, flightheight):
 
 def fly_snake_pattern(scf, flightheight, coordinates):
     global START_TIME
-    START_TIME = True
+    count_x=0
+    count_y=0
     relative_positions=[]
     coordinates.insert(0,[0,0])
     for x in range(len(coordinates)-1):
         relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
-    print(relative_positions)
+        if(relative_positions[x][1]):
+            print("turn")
+            count_y+=1
+            print(f"count_y:{count_y}{relative_positions[x]}")
+            count_x=0
+        else:
+            count_x+=1
+            print(f"count_x:{count_x}{relative_positions[x]}")
+            count_y=0
+
+    #print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
         fly_take_off(mc,flightheight)      
-        time.sleep(1)        
+        time.sleep(0.6) 
+        starting_position=relative_positions.pop(0)
+        mc.move_distance(starting_position[0],starting_position[1],0)
+        START_TIME = True  
+        time.sleep(0.6) 
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0) 
-            #time.sleep(0.1)
+            #time.sleep(1.5)
             if(koordinate[1]):
                 print("turn")
         START_TIME = False
@@ -166,12 +185,53 @@ def fly_snake_pattern(scf, flightheight, coordinates):
         mc.stop()
         time.sleep(2)   
 
+
+def fly_snake_pattern2(cf, flightheight, coordinates):
+
+    #cf = scf.cf
+    global START_TIME
+
+    relative_positions=[]
+    coordinates.insert(0,[0,0])
+    for x in range(len(coordinates)-1):
+        relative_positions.append([coordinates[x+1][0]-coordinates[x][0],coordinates[x+1][1]-coordinates[x][1]])
+    starting_position=relative_positions.pop(0)
+    for y in range(int(flightheight*100)):
+        cf.commander.send_hover_setpoint(0, 0, 0, y / 100)
+        time.sleep(0.1)
+    START_TIME = True
+    for _ in range(20):
+        cf.commander.send_hover_setpoint(starting_position[0],starting_position[1],0,0.3)
+        time.sleep(0.1)
+    #time.sleep(0.5)        
+    for koordinate in relative_positions:
+        for x in range(10):
+            cf.commander.send_hover_setpoint(koordinate[0],koordinate[1], 0, flightheight)
+            time.sleep(0.1)
+
+        #time.sleep(0.2)
+        if(koordinate[1]):
+            print("turn")
+    START_TIME = False
+       # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        #print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+    fly_landing_position_test(cf,flightheight)  
+  
+def fly_landing_position_test(cf,flightheight):
+    print("Landing")
+    difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]  
+    while(abs(difference[0])>0.1 or abs(difference[1])>0.1):
+        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
+        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
+        print(f"difference: {difference}")          
+        cf.send_hover_setpoint(difference[0],difference[1],0,flightheight / 100)
+        time.sleep(0.5)   
+        difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
              
 
 
 def fly_cage_pattern(scf, flightheight, coordinates):
     global START_TIME
-    START_TIME = True    
     relative_positions=[]
     coordinates.insert(0,[0,0])
     for x in range(len(coordinates)-1):
@@ -179,7 +239,12 @@ def fly_cage_pattern(scf, flightheight, coordinates):
     print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
         fly_take_off(mc,flightheight)        
-        time.sleep(2)        
+        time.sleep(0.6) 
+        starting_position=relative_positions.pop(0)
+        mc.move_distance(starting_position[0],starting_position[1],0)
+        START_TIME = True  
+        time.sleep(0.6) 
+  
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0)
             #time.sleep(0.1)
@@ -326,7 +391,7 @@ def save_dataset_to_csv():
         file_path = target_dir_path / f"{FILENAME}_F.csv"
         with open(file_path, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=',')
-            csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+            csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Gas1L', 'Gas1R'])
             start_time = DATASET_FLIGHTPATH[0][0]            
             for data in DATASET_FLIGHTPATH:
                 data[0] -= start_time
@@ -335,7 +400,7 @@ def save_dataset_to_csv():
     file_path = target_dir_path / f"{FILENAME}_C.csv"
     with open(file_path, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Zrange', 'Gas1L', 'Gas1R'])
+        csvwriter.writerow(['Time', 'X', 'Y', 'Z', 'Gas1L', 'Gas1R'])
         start_time = DATASET_COMPLETE[0][0]            
         for data in DATASET_COMPLETE:
             data[0] -= start_time
