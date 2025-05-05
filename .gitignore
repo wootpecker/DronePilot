@@ -1,0 +1,10 @@
+model/
+data/
+old/
+model/
+/logs/*
+!logs/logger.py
+__pycache__/
+pycache/*
+helper/pycache/*
+results/

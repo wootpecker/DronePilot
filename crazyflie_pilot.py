@@ -3,7 +3,6 @@ import logs.logger as logger
 import logging
 import flightpaths
 import parameters
-import dynamic_plot
 import sys
 import time
 from threading import Event
