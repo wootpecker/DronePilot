@@ -11,7 +11,7 @@ import numpy as np
 
 LOGS_SAVE = False
 WINDOW_SIZE=[320,320]
-NAMES=["F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
+NAMES=["first","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
 EXAMPLE=NAMES[0]
 TRANFORM_TO_CENTER=True
 
@@ -22,8 +22,8 @@ def main():
     plot_gdm(df)
 
 def load_csv(flightpath, file=None):       
-    if flightpath == "first":
-        files = os.listdir("data")
+    if file == "first":
+        files = [f for f in os.listdir("data") if os.path.isfile(os.path.join("data", f))]
         files = files[0]
         file_path=f"data/{files}"
     elif file:
