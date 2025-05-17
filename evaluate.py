@@ -5,9 +5,9 @@ import torch
 import logs.logger as logger
 import logging
 import parameters
+import numpy as np
 
-
-NAMES=["F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
+NAMES=["F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
 EXAMPLE=NAMES[0]
 LOGS_SAVE = False
 WINDOW_SIZE=[250,250]
@@ -96,8 +96,13 @@ def plot_flightpath(df, window_size=WINDOW_SIZE):
     for i in range(len(X)):
         #print(X.iloc[i], Y.iloc[i], Time.iloc[i])
         image[X.iloc[i], Y.iloc[i]]=Time.iloc[i]
-    image.unsqueeze(-1)        
-    plt.imshow(image, cmap='turbo', origin="lower")
+    image.unsqueeze(-1)
+    turbo = plt.cm.get_cmap("turbo", 256)
+    colors = turbo(np.linspace(0, 1, 256))
+    colors[0] = [1, 1, 1, 1] 
+    from matplotlib.colors import LinearSegmentedColormap
+    turbo_white = LinearSegmentedColormap.from_list("turbo_white", colors)        
+    plt.imshow(image, cmap=turbo_white, origin="lower")#'turbo', origin="lower")
     plt.title("Flightpath")
     plt.show()
 

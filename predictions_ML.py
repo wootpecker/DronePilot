@@ -46,7 +46,7 @@ TRAINING_PARAMETERS = {
 
 LOGS_SAVE = False
 WINDOW_SIZE=HYPER_PARAMETERS['WINDOW_SIZE']
-NAMES=["F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
+NAMES=["F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
 EXAMPLE=NAMES[0]
 TRANFORM_TO_CENTER=True
 
@@ -82,15 +82,16 @@ def transform_data(df, window_size=HYPER_PARAMETERS['WINDOW_SIZE']):
         imageGasR[X[i], Y[i]] = Gas1R[i]
 
     zeros=torch.zeros(size=Gas1R.shape)
-    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)#)
     img1= ax1.imshow(imageGasL, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax1.set_title('Gas Distribution Left')
     img2=ax2.imshow(imageGasR, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax2.set_title('Gas Distribution Right')
-    im1 = ax1.imshow(imageGasL, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
-    cbar = plt.colorbar(img1, ax=ax1)
+    cbar = fig.colorbar(img1, ax=ax2, orientation='vertical')
+    cbar.set_label('Intensity')
+    #cbar = plt.colorbar(img1, ax=ax1)
     #plt.colorbar(img2, ax=ax2)
-    #plt.show()
+    plt.show()
     return imageGasL, imageGasR
 
 
@@ -143,18 +144,36 @@ def load_model(model: torch.nn.Module, model_type: str, device="cuda"):
 def plot_predictions(X, y_pred, y_pred_percent):
     y_pred=y_pred.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
     y_pred_percent=y_pred_percent.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
-    fig, axes = plt.subplots(1, 3)
-    axes[0].set_title('Flight Path')
-    img1 = axes[0].imshow(X, cmap="turbo", origin="lower",alpha=1)
-    img1_overlay = axes[0].imshow(y_pred_percent, cmap="turbo", origin="lower",alpha=0.5)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    axes[0].set_title('Flight Path', fontsize=14)
+    X_img=X[0:25,0:25]
+    y_pred_img=y_pred[0:25,0:25]
+    y_pred_percent_img=y_pred_percent[0:25,0:25]
+    img1 = axes[0].imshow(X_img, cmap="viridis", origin="lower",alpha=1)
+    #img1_overlay = axes[0].imshow(y_pred_percent_img, cmap="turbo", origin="lower",alpha=0.5)
     #plt.colorbar(img1, ax=ax1, label="X Intensity")
     #plt.colorbar(img1_overlay, ax=ax1, label="Prediction Intensity")
-    img2= axes[1].imshow(y_pred, cmap="turbo", origin="lower")
-    axes[1].set_title('Model Prediction')
-    img3= axes[2].imshow(y_pred_percent, cmap="turbo", origin="lower")
-    y, x = divmod(torch.argmax(y_pred_percent).item(), 64)
-    axes[2].set_title(f'Predicted Coordinates: ({x}, {y}) by {torch.max(y_pred_percent).item()*100:.2f}%')
-    plt.colorbar(img3, ax=axes[2], label="Prediction Intensity")
+    img2= axes[1].imshow(y_pred_img, cmap="turbo", origin="lower")
+    axes[1].set_title('Model Prediction', fontsize=14)
+    img3= axes[2].imshow(y_pred_percent_img, cmap="turbo", origin="lower",alpha=1)
+    img3_overlay = axes[2].imshow(X_img, cmap="viridis", origin="lower",alpha=0.2)
+    color = "red"
+    y, x = divmod(torch.argmax(y_pred_percent).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    axes[2].set_title(f'Predictions, Max={y_pred_percent.max():.2f} at ({x},{y})', color=color, fontsize=14)
+    axes[0].set_ylabel(f"y (dm)", fontsize=14)
+    for ax in axes:
+        #ax.axis('off')
+        ax.label_outer() 
+        ax.set_ylabel(f"y (dm)", fontsize=14)
+        ax.set_xlabel(f"x (dm)", fontsize=14)
+        ax.label_outer() 
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.76])  # adjust as needed
+    fig.colorbar(img1, cax=cbar_ax).set_label('Intensity')
+
+    #cbar = fig.colorbar(img1, ax=axes.ravel().tolist(), orientation='vertical')
+    #cbar.set_label('Intensity')
+    #plt.colorbar(img3, ax=axes[2], label="Prediction Intensity")
+    plt.tight_layout(rect=[0, 0, 0.9, 1])
     plt.show()
 
 
