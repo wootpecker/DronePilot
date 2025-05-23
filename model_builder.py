@@ -6,7 +6,7 @@ from torch import nn
 import torch.nn.functional as F
 import logging 
 
-MODELS = ["VGG", "EncoderDecoder", "VGGVariation","SimpleEncDec"] #UnetEncoderDecoder
+MODELS = ["VGG8", "UnetS", "VGGVariation","SimpleEncDec"] #UnetEncoderDecoder
 
 def choose_model(model_type=MODELS[0], output_shape=1, device="cuda", input_shape=1, window_size=[64,64]):
   """Returns Model from model_type.
@@ -15,68 +15,23 @@ def choose_model(model_type=MODELS[0], output_shape=1, device="cuda", input_shap
   classes(int): An integer indicating number of classes.
   device(str): Device to be used (cuda/cpu)
   """
-  output_shape=window_size[0]*window_size[1]
-  if(model_type==MODELS[0]):
-    model = VGG(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
+  if(model_type==MODELS[0]):    
+    model = VGG8(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
   elif(model_type==MODELS[1]):
     output_shape=1
     #input
-    model = EncoderDecoder(output_shape=output_shape,input_shape=input_shape).to(device)
+    model = UnetS(output_shape=output_shape,input_shape=input_shape).to(device)
   elif(model_type==MODELS[2]):
-    model = VGGVariation(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
+     model = VGGVariation(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
   elif(model_type==MODELS[3]):
     output_shape=1
     model = SimpleEncDec().to(device)
   logging.info(f"[BUILDER] Model (Type: {model_type}, Classes: {output_shape}, Device: {device}) loaded.")  
   return model
 
-class VGGVariation2(nn.Module):
-    """Creates the VGGVariation architecture.
-    Args:
-    output_shape(int): An integer indicating number of classes.
-    """
-    def __init__(self, output_shape: int, input_shape=1, window_size=[64,64]) -> None:
-        FEATURE_MAP=[64,128,512]
-        LINEAR_MULTIPLIER=[window_size[0]//4,window_size[1]//4]
-        super().__init__()
-        self.conv_block_1 = nn.Sequential(
-          nn.Conv2d(in_channels=input_shape, out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),  
-          nn.ReLU(),
-          nn.Conv2d(in_channels=FEATURE_MAP[0], out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),
-          nn.ReLU(),
-          nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-        self.conv_block_2 = nn.Sequential(
-          nn.Conv2d(in_channels=FEATURE_MAP[0], out_channels=FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),  
-          nn.ReLU(),
-          nn.Conv2d(in_channels=FEATURE_MAP[1], out_channels=FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
-          nn.ReLU(),
-          nn.Conv2d(in_channels=FEATURE_MAP[1], out_channels=FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
-          nn.ReLU(),
-          nn.MaxPool2d(kernel_size=2,stride=2)
-        )
-
-        self.classifier = nn.Sequential(
-          nn.Flatten(),
-          #print(FEATURE_MAP[3]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1]),
-          #print(4*output_shape),
-          nn.Linear(in_features=FEATURE_MAP[1]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=output_shape),
-          nn.ReLU()
-          #nn.Dropout(0.5),
-          #nn.Linear(in_features=8192, out_features=output_shape),
-          #nn.ReLU()
-        )
-    
-    def forward(self, x: torch.Tensor):
-        x = self.conv_block_1(x)
-        x = self.conv_block_2(x)
-        x = self.classifier(x)
-        return x
-        # return self.classifier(self.block_2(self.block_1(x))) # <- leverage the benefits of operator fusion
 
 
-
-class VGGVariation(nn.Module):
+class VGG8(nn.Module):
     """Creates the VGGVariation architecture based on input with at least 24*24 input.
     Args:
     input_shape(int): An integer indicating number of input channels (default 1 channel).
@@ -118,9 +73,14 @@ class VGGVariation(nn.Module):
         )
         self.classifier = nn.Sequential(
           nn.Flatten(),
-          nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=output_shape)#,#needs to be changed according to data
+          #nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1]),#needs to be changed according to data
           #nn.ReLU(),
           #nn.Dropout(0.5),
+          #nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1]),
+          #nn.ReLU(),
+          nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=output_shape)#,#needs to be changed according to data
+          #nn.ReLU(),
+          #
           #nn.Linear(in_features=4096, out_features=output_shape),
           #nn.ReLU()
           #nn.Dropout(0.5),          
@@ -141,81 +101,13 @@ class VGGVariation(nn.Module):
         # return self.classifier(self.block_2(self.block_1(x))) # <- leverage the benefits of operator fusion
 
 
-
-class VGG(nn.Module):
+class UnetS(nn.Module):
     """Creates the VGGVariation architecture based on input with at least 24*24 input.
     Args:
     input_shape(int): An integer indicating number of input channels (default 1 channel).
     output_shape(int): An integer indicating number of classes.
     """
-    def __init__(self, output_shape: int,input_shape=1, window_size=[64,64]) -> None:
-        FEATURE_MAP=[32,64,128]
-        LINEAR_MULTIPLIER=[window_size[0]//8,window_size[1]//8]
-        super().__init__()
-        self.conv_block_1 = nn.Sequential(
-          nn.Conv2d(in_channels=input_shape, out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),  
-          nn.BatchNorm2d(FEATURE_MAP[0]),
-          nn.ReLU(),
-          nn.Conv2d(in_channels=FEATURE_MAP[0], out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[0]),                    
-          nn.ReLU(),
-          nn.MaxPool2d(kernel_size=2,stride=2)
-        )
-        self.conv_block_2 = nn.Sequential(
-          nn.Conv2d(FEATURE_MAP[0], FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[1]),          
-          nn.ReLU(),
-          nn.Conv2d(FEATURE_MAP[1], FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[1]),          
-          nn.ReLU(),
-          nn.MaxPool2d(kernel_size=2,stride=2)
-        )
-        self.conv_block_3 = nn.Sequential(
-          nn.Conv2d(FEATURE_MAP[1], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[2]),          
-          nn.ReLU(),
-          nn.Conv2d(FEATURE_MAP[2], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[2]),          
-          nn.ReLU(),
-          nn.Conv2d(FEATURE_MAP[2], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
-          nn.BatchNorm2d(FEATURE_MAP[2]),          
-          nn.ReLU(),
-          nn.MaxPool2d(kernel_size=2,stride=2)
-        )
-        self.classifier = nn.Sequential(
-          nn.Flatten(),
-          nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=4096),#needs to be changed according to data
-          nn.ReLU(),
-          nn.Dropout(0.5),
-          nn.Linear(in_features=4096, out_features=2048),
-          nn.ReLU(),
-          nn.Dropout(0.5),          
-          nn.Linear(in_features=2048, out_features=output_shape)
-        )
-    
-    def forward(self, x: torch.Tensor):
-        #print(x.shape)
-        x = self.conv_block_1(x)
-        #print(x.shape)
-        x = self.conv_block_2(x)
-        #print(x.shape)
-        x = self.conv_block_3(x)
-       # print(x.shape)
-        x = self.classifier(x)
-       # print(x.shape)
-        return x
-        # return self.classifier(self.block_2(self.block_1(x))) # <- leverage the benefits of operator fusion
-
-
-
-
-class EncoderDecoder(nn.Module):
-    """Creates the VGGVariation architecture based on input with at least 24*24 input.
-    Args:
-    input_shape(int): An integer indicating number of input channels (default 1 channel).
-    output_shape(int): An integer indicating number of classes.
-    """
-    def __init__(self, output_shape: int,input_shape=1,dropout=0.5) -> None:
+    def __init__(self, output_shape: int,input_shape=1,dropout=0.1) -> None:
         FEATURE_MAP=[32,64,128,256]
         super().__init__()
         self.dropout = dropout
@@ -288,6 +180,72 @@ class EncoderDecoder(nn.Module):
 
 
 
+
+
+
+class VGGVariation(nn.Module):
+    """Creates the VGGVariation architecture based on input with at least 24*24 input.
+    Args:
+    input_shape(int): An integer indicating number of input channels (default 1 channel).
+    output_shape(int): An integer indicating number of classes.
+    """
+    def __init__(self, output_shape: int,input_shape=1, window_size=[64,64]) -> None:
+        FEATURE_MAP=[32,64,128]
+        LINEAR_MULTIPLIER=[window_size[0]//8,window_size[1]//8]
+        super().__init__()
+        self.conv_block_1 = nn.Sequential(
+          nn.Conv2d(in_channels=input_shape, out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),  
+          nn.BatchNorm2d(FEATURE_MAP[0]),
+          nn.ReLU(),
+          nn.Conv2d(in_channels=FEATURE_MAP[0], out_channels=FEATURE_MAP[0], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[0]),                    
+          nn.ReLU(),
+          nn.MaxPool2d(kernel_size=2,stride=2)
+        )
+        self.conv_block_2 = nn.Sequential(
+          nn.Conv2d(FEATURE_MAP[0], FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[1]),          
+          nn.ReLU(),
+          nn.Conv2d(FEATURE_MAP[1], FEATURE_MAP[1], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[1]),          
+          nn.ReLU(),
+          nn.MaxPool2d(kernel_size=2,stride=2)
+        )
+        self.conv_block_3 = nn.Sequential(
+          nn.Conv2d(FEATURE_MAP[1], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[2]),          
+          nn.ReLU(),
+          nn.Conv2d(FEATURE_MAP[2], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[2]),          
+          nn.ReLU(),
+          nn.Conv2d(FEATURE_MAP[2], FEATURE_MAP[2], kernel_size=3, stride=1, padding=1),
+          nn.BatchNorm2d(FEATURE_MAP[2]),          
+          nn.ReLU(),
+          nn.MaxPool2d(kernel_size=2,stride=2)
+        )
+        self.classifier = nn.Sequential(
+          nn.Flatten(),
+          nn.Linear(in_features=FEATURE_MAP[2]*LINEAR_MULTIPLIER[0]*LINEAR_MULTIPLIER[1], out_features=4096),#needs to be changed according to data
+          nn.ReLU(),
+          nn.Dropout(0.5),
+          nn.Linear(in_features=4096, out_features=2048),
+          nn.ReLU(),
+          nn.Dropout(0.5),          
+          nn.Linear(in_features=2048, out_features=output_shape)
+        )
+    
+    def forward(self, x: torch.Tensor):
+        #print(x.shape)
+        x = self.conv_block_1(x)
+        #print(x.shape)
+        x = self.conv_block_2(x)
+        #print(x.shape)
+        x = self.conv_block_3(x)
+       # print(x.shape)
+        x = self.classifier(x)
+       # print(x.shape)
+        return x
+        # return self.classifier(self.block_2(self.block_1(x))) # <- leverage the benefits of operator fusion
 
 
 

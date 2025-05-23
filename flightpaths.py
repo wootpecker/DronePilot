@@ -68,7 +68,7 @@ def flightpath_to_coordinates(flightpath,window_shape=[12,12],distance=5,pad=2,s
     for value in coordinates:
             value[0]=(10*value[0]+5)/100
             value[1]=(10*value[1]+5)/100
-            print(f"x: {value[0]}, y: {value[1]}")
+    #        print(f"x: {value[0]}, y: {value[1]}")
     #print(coordinates)
     return coordinates
 

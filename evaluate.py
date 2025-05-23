@@ -7,7 +7,7 @@ import logging
 import parameters
 import numpy as np
 
-NAMES=["F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
+NAMES=["first","F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
 EXAMPLE=NAMES[0]
 LOGS_SAVE = False
 WINDOW_SIZE=[250,250]
@@ -18,9 +18,16 @@ def main():
     plot_flightpath(df)
     plot_gdm(df)
 
+
+def test_all():
+    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
+    df = load_csv(parameters.PARAMETERS[1],EXAMPLE)
+    plot_flightpath(df)
+    plot_gdm(df)    
+
 def load_csv(flightpath, file=None):       
-    if flightpath == "first":
-        files = os.listdir("data")
+    if file == "first":
+        files = [f for f in os.listdir("data") if os.path.isfile(os.path.join("data", f))]
         files = files[0]
         file_path=f"data/{files}"
     elif file:
@@ -140,7 +147,8 @@ def transform_column(df):
 def transform_m_cm(df_column):
     if df_column.max() < 10:
         df_column = df_column * 100
-        df_column = df_column+abs(df_column.min())
+        if df_column.min() < 0:
+            df_column = df_column+abs(df_column.min())
     df_column = df_column.astype(int)
     return df_column
 
