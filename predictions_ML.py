@@ -157,8 +157,8 @@ def load_model(model: torch.nn.Module, model_type: str, device="cuda"):
   return model,start
 
 def plot_predictions(X, y_pred, y_pred_percent):
-    source_location=[4, 15]
-    wind_arrow=[1, 15]
+    source_location=[9, 15]
+    wind_arrow=[12, 15]
     y_pred=y_pred.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
     y_pred_percent=y_pred_percent.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
     # Compute global min and max for consistent color scaling
@@ -166,7 +166,9 @@ def plot_predictions(X, y_pred, y_pred_percent):
     vmax = X.max()
 
     bench_y, bench_x = divmod(np.argmax(X).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
-
+    flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
+    flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
+    flight_path=np.array(flight_path)
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
     axes[0].set_title('Flight Path', fontsize=14)
     X_img=X[0:20,0:20]
@@ -174,8 +176,9 @@ def plot_predictions(X, y_pred, y_pred_percent):
     y_pred_percent_img=y_pred_percent[0:20,0:20]
     img1 = axes[0].imshow(X_img, cmap="viridis", origin="lower",alpha=1, vmin=vmin, vmax=vmax)
     source_location_1=axes[0].plot(source_location[0], source_location[1], marker='D', color='red', markersize=8,linestyle='None', label='Source Location', zorder=2)
-    wind_direction_1_right=axes[0].annotate('', xy=(wind_arrow[0], wind_arrow[1]), xytext=(source_location[0], source_location[1]), arrowprops=dict(arrowstyle='->', color='deepskyblue', lw=2, mutation_scale=15), zorder=1)
     img1_flightpath = axes[0].scatter(flight_path[:,1],flight_path[:,0], color="yellow",alpha=0.7, s=10)
+
+    wind_direction_1_right=axes[0].annotate('', xy=(wind_arrow[0], wind_arrow[1]), xytext=(source_location[0], source_location[1]), arrowprops=dict(arrowstyle='->', color='deepskyblue', lw=2, mutation_scale=15), zorder=1)
 
     img2= axes[1].imshow(y_pred_percent_img, cmap="viridis", origin="lower", alpha=1, vmin=vmin, vmax=vmax)
     y, x = divmod(torch.argmax(y_pred_percent).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
@@ -184,10 +187,9 @@ def plot_predictions(X, y_pred, y_pred_percent):
     axes[1].set_title('Model Prediction', fontsize=14)
     #img3= axes[2].imshow(y_pred_percent_img, cmap="turbo", origin="lower",alpha=1)
 
-    flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
+    
     X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
-    flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
-    flight_path=np.array(flight_path)
+
 
     #img3_overlay = axes[2].imshow(X_img, cmap="viridis", origin="lower",alpha=0.9, vmin=vmin, vmax=vmax)
     img2= axes[2].imshow(X_img, cmap="viridis", origin="lower",alpha=0.9)
