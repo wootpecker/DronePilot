@@ -1,12 +1,41 @@
 """
-Contains PyTorch model code to instantiate a TinyVGG model.
+model_builder.py
+This module defines a set of neural network architectures and a selection of these models for the DroneSearch project.
+It provides modular implementations of VGG-like and U-Net-like models.
+
+-----------------------------
+Constants:
+- MODELS (list of str): 
+  Available model types for selection. ["VGG8", "UnetS"]  
+  ["VGGVariation", "SimpleEncDec"] models are variatons for testing purposes.
+
+-----------------------------
+Functions:
+- choose_model(model_type, output_shape, device, input_shape, window_size):
+  Returns the selected model architecture, initialized with the specified parameters.
+
+-----------------------------
+Classes:
+- VGG8:            A compact VGG-style convolutional neural network for classification.
+- UnetS:           A U-Net style encoder-decoder network for segmentation, with skip connections and dropout.
+
+- VGGVariation:    A deeper VGG-style network with additional fully connected layers and dropout (for testing purposes).
+- SimpleEncDec:    A minimal encoder-decoder network for quick prototyping (for testing purposes).
+
+-----------------------------
+Dependencies:
+- torch, logging
+
+-----------------------------
+Usage:
+- Import this module in training scripts or testing scripts to create an instance of a machine learning model.
 """
+
 import torch
 from torch import nn 
-import torch.nn.functional as F
 import logging 
 
-MODELS = ["VGG8", "UnetS", "VGGVariation","SimpleEncDec"] #UnetEncoderDecoder
+MODELS = ["VGG8", "UnetS", "VGGVariation","SimpleEncDec"]
 
 def choose_model(model_type=MODELS[0], output_shape=1, device="cuda", input_shape=1, window_size=[64,64]):
   """Returns Model from model_type.
@@ -19,7 +48,6 @@ def choose_model(model_type=MODELS[0], output_shape=1, device="cuda", input_shap
     model = VGG8(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
   elif(model_type==MODELS[1]):
     output_shape=1
-    #input
     model = UnetS(output_shape=output_shape,input_shape=input_shape).to(device)
   elif(model_type==MODELS[2]):
      model = VGGVariation(output_shape=output_shape,input_shape=input_shape,window_size=window_size).to(device)
@@ -102,7 +130,7 @@ class VGG8(nn.Module):
 
 
 class UnetS(nn.Module):
-    """Creates the VGGVariation architecture based on input with at least 24*24 input.
+    """Creates the VGGVariation architecture based on 64*64 input.
     Args:
     input_shape(int): An integer indicating number of input channels (default 1 channel).
     output_shape(int): An integer indicating number of classes.
@@ -251,94 +279,6 @@ class VGGVariation(nn.Module):
 
 
 #TEST ---------------------------------------------------------------TEST
-
-class UnetEncoderDecoder3025(nn.Module):
-    """Creates the VGGVariation architecture based on input with 30x25.
-    Args:
-    input_shape(int): An integer indicating number of input channels (default 1 channel).
-    output_shape(int): An integer indicating number of classes.
-    """
-    def __init__(self, output_shape: int,input_shape=1,dropout=0.5) -> None:
-        FEATURE_MAP=[32,64,128,256]
-        super().__init__()
-        self.dropout = dropout
-
-        # Encoder
-        self.enc_block_1 = self.conv_block(input_shape,FEATURE_MAP[0])
-        self.enc_block_2 = self.conv_block(FEATURE_MAP[0],FEATURE_MAP[1])
-        self.enc_block_3 = self.conv_block(FEATURE_MAP[1],FEATURE_MAP[2])
-
-        # Bottleneck
-        self.bottleneck = self.conv_block(FEATURE_MAP[2],FEATURE_MAP[3])
-
-        #Decoder
-        self.upsample_3 = nn.ConvTranspose2d(FEATURE_MAP[3],FEATURE_MAP[2],kernel_size=2,stride=2)
-        self.dec_block_3 = self.conv_block(FEATURE_MAP[3],FEATURE_MAP[2])
-        self.upsample_2 = nn.ConvTranspose2d(FEATURE_MAP[2],FEATURE_MAP[1],kernel_size=2,stride=2)
-        self.dec_block_2 = self.conv_block(FEATURE_MAP[2],FEATURE_MAP[1])
-        self.upsample_1 = nn.ConvTranspose2d(FEATURE_MAP[1],FEATURE_MAP[0],kernel_size=2,stride=2)
-        self.dec_block_1 = self.conv_block(FEATURE_MAP[1],FEATURE_MAP[0])
-        
-        #Final
-        self.final_block=nn.Sequential(
-          nn.Conv2d(FEATURE_MAP[0],output_shape,kernel_size=1),
-          #nn.Sigmoid()
-          )
-    
-
-    def conv_block(self, in_channels, out_channels):
-      """Convolutional block with BatchNorm + ReLU."""
-      return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(),
-        nn.Dropout(self.dropout),
-        nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(),
-        nn.Dropout(self.dropout)
-    )
-
-    def forward(self, x: torch.Tensor):
-        #Encoder
-        enc_block_1 = self.enc_block_1(x)
-        enc_block_2 = self.enc_block_2(self.downsample(enc_block_1))
-        enc_block_3 = self.enc_block_3(self.downsample(enc_block_2))
-
-        #Bottleneck
-        bottleneck = self.bottleneck(self.downsample(enc_block_3))
-
-        #Decoder
-        dec_block_3=self.dec_block_3(self.skip_connection(self.upsample_3(bottleneck),enc_block_3))
-        dec_block_2=self.dec_block_2(self.skip_connection(self.upsample_2(dec_block_3),enc_block_2))
-        dec_block_1=self.dec_block_1(self.skip_connection(self.upsample_1(dec_block_2),enc_block_1))
-
-        #Final
-        return self.final_block(dec_block_1)
-        
-    def downsample(self,x):
-      return nn.MaxPool2d(kernel_size=2,stride=2)(x)
-
-    def skip_connection(self, x, skip):
-      height=skip.shape[-2]-x.shape[-2]
-      width=skip.shape[-1]-x.shape[-1]
-      #print(f"calc{[width//2, width-width//2, height//2, height-height//2]}")
-      x=F.pad(x,[width//2, width-width//2, height//2, height-height//2])
-      # Concatenate skip connection
-      #a,b,h,w=x.size()
-      #skip = skip.reshape(a, b, h, w)
-      return torch.cat((skip, x), dim=1)
-
-
-
-
-
-
-
-
-
-
-
 
 
 

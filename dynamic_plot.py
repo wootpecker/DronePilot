@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
@@ -18,15 +17,10 @@ def main():
 def dynamic_plot(flightpath="TestPositioning",window_size=[100,100]):  
     logger.logging_config(logs_save=LOGS_SAVE)  
     fig, ax = plt.subplots()
-    
     (line,) = ax.plot([], [], "b-", label="Log Data")
     ani = animation.FuncAnimation(fig, update_plot, fargs=(fig, ax, flightpath, window_size), interval=200)
     plt.show()
-        # Assuming the CSV has 'time' and 'log_value' columns
-        #ax.plot(df["time"], df["log_value"], "b-")
 
-# Use FuncAnimation to update the plot every 100 ms
-#ani = animation.FuncAnimation(fig, update, interval=100)
 
 
 
@@ -47,16 +41,11 @@ def update_plot(frame, fig, ax, flightpath="TestPositioning", window_size=[200,2
         for i in range(len(X)):
             image[X.iloc[i], Y.iloc[i]]=Time.iloc[i]
         image.unsqueeze(-1)
-
         im = ax.imshow(image, cmap='turbo', origin="lower")
         ax.set_xlabel("X in cm")
         ax.set_ylabel("Y in cm")
         ax.set_title(f"Crazyflie Flightpath: {flightpath}")
-        #ax.legend(["time in ms"])      
-        #fig.colorbar(im, ax=ax)
-        #plt.imshow(image)
-        #df.plot()
-        #plt.show()
+
 
 def transform_column(df):
     X=transform_m_mm(df_column=df['X'])

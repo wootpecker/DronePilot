@@ -10,8 +10,9 @@ import utils
 
 LOGS_SAVE = False
 WINDOW_SIZE=[32,32]
-NAMES=["first","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
-EXAMPLE=NAMES[0]
+#NAMES=["first","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"] #old names
+NAMES=["all","A","A_invers","B","B_invers","first","F_1"]
+EXAMPLE=NAMES[5]
 TRANFORM_TO_CENTER=True
 
 
@@ -24,6 +25,7 @@ def main():
     
 
 def plot_gdm(df, window_size=WINDOW_SIZE):
+    df= df[0]
     logging.info("Plottting Gas Distribution.")    
     df_plot=transform_column(df=df)
     X=df_plot['X']

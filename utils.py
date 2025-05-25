@@ -1,7 +1,5 @@
 
 import os
-import matplotlib.pyplot as plt
-import torch
 import logging
 import pandas as pd
 
@@ -45,9 +43,11 @@ def load_csv(flightpath, file=None):
                 return None
         return dfs
     elif file == "first":
-        files = [f for f in os.listdir("data") if os.path.isfile(os.path.join("data", f))]
-        files = files[0]
-        file_path=f"data/{files}"
+        folders = [f for f in os.listdir("data") if os.path.isdir(os.path.join("data", f))]
+        folder = folders[0]
+        files = [f for f in os.listdir(os.path.join("data", folder)) if os.path.isfile(os.path.join("data", folder, f))]
+        file = files[0]
+        file_path = f"data/{folder}/{file}"
     elif file:
         file_path=f"data/GSL_{flightpath}_0.3_{file}.csv"        
     else:
@@ -56,7 +56,7 @@ def load_csv(flightpath, file=None):
     try:    
         df = pd.read_csv(file_path)
         logging.info(f"[DATA] Columns: {', '.join(df.columns)}")
-        df =[df]
+        df = [df]
         return df
     except:
         logging.error(f"[DATA] Could not load file: {file_path}")
