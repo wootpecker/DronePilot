@@ -4,7 +4,7 @@ import logging
 from cflib.utils import uri_helper
 
 FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
-PARAMETERS=[0.3,"Snake",3]#height,flightpath,distance
+#PARAMETERS=[0.3,"Snake",3]#height,flightpath,distance
 
 
 def choose_model():
@@ -41,7 +41,6 @@ def choose_model():
     return uri
 
 def choose_flightpath():
-    return PARAMETERS[1]
     output=""
     for fp in range(len(FLIGHT_PATH)):
         output=output+f"{fp} )  Flightpath: {FLIGHT_PATH[fp]} \n"
@@ -64,7 +63,6 @@ def choose_flightpath():
 
 
 def choose_flightheight():
-    return PARAMETERS[0]
     output=""
     flightheight=input(f"Choose a Height for the Experiment in cm (10-100): ")
     try:
@@ -86,7 +84,6 @@ def choose_flightheight():
 
 
 def choose_distance():
-    return PARAMETERS[2]
     output=""
     distance=input(f"Choose a distance between measurements in dm(=10cm) (1-20): ")
     try:

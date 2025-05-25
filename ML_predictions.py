@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple
 #import ..model_dataloader as model_dataloader
 from logs import logger
-import predictions
+import transform_measurements
 import parameters
 import model_builder
 import random
@@ -39,14 +39,6 @@ HYPER_PARAMETERS = {
 
 
 
-TRAINING_PARAMETERS = {
-              "NUM_EPOCHS": 50,
-               "BATCH_SIZE": 128,
-               "LEARNING_RATE": 0.001,
-               "LOAD_SEED": 16923,
-               "TRAIN_SEED": 42
-  }
-
 LOGS_SAVE = False
 WINDOW_SIZE=HYPER_PARAMETERS['WINDOW_SIZE']
 NAMES=["all","A","A_invers","B","B_invers"]
@@ -56,7 +48,7 @@ SHOW_PLOT=False
 
 
 
-MODEL_TO_TEST=(HYPER_PARAMETERS['MODEL_TYPES'][0],HYPER_PARAMETERS['MODEL_TYPES'][1])
+MODEL_TO_TEST=[HYPER_PARAMETERS['MODEL_TYPES'][1],HYPER_PARAMETERS['MODEL_TYPES'][1]]
 #MODEL_TO_TEST=(HYPER_PARAMETERS['MODEL_TYPES'][0],HYPER_PARAMETERS['MODEL_TYPES'][1],HYPER_PARAMETERS['MODEL_TYPES'][2])
 
 BENCH=[]
@@ -82,7 +74,7 @@ def main():
 
 def transform_data(df, window_size=HYPER_PARAMETERS['WINDOW_SIZE'],plot=False):
     logging.info("Plottting Gas Distribution.")    
-    df_plot=predictions.transform_column(df=df)
+    df_plot=transform_measurements.transform_column(df=df)
     X=df_plot['X']
     Y=df_plot['Y']
     Gas1L = df_plot['Gas1L']
@@ -146,10 +138,14 @@ def load_model(model: torch.nn.Module, model_type: str, device="cuda"):
   
   if len(files)==0:
     return model,0
-  start=len(files)
-  save_format=".pth"
-  model_name = model_type + "_" + device + f"_{start:03d}" + save_format
-  model_load_path = target_dir_path / model_name
+  elif len(files)==1:
+    model_load_path = target_dir_path / files[0]
+    start=1
+  else:
+    start=len(files)
+    save_format=".pth"
+    model_name = model_type + "_" + device + f"_{start:03d}" + save_format
+    model_load_path = target_dir_path / model_name
   model.load_state_dict(torch.load(f=model_load_path,weights_only=True))
   model = model.to(device)
   # Save the model state_dict()
@@ -171,9 +167,9 @@ def plot_predictions(X, y_pred, y_pred_percent):
     flight_path=np.array(flight_path)
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
     axes[0].set_title('Flight Path', fontsize=14)
-    X_img=X[0:20,0:20]
-    y_pred_img=y_pred[0:20,0:20]
-    y_pred_percent_img=y_pred_percent[0:20,0:20]
+    X_img=X[0:21,0:21]
+    y_pred_img=y_pred[0:21,0:21]
+    y_pred_percent_img=y_pred_percent[0:21,0:21]
     img1 = axes[0].imshow(X_img, cmap="viridis", origin="lower",alpha=1, vmin=vmin, vmax=vmax)
     source_location_1=axes[0].plot(source_location[0], source_location[1], marker='D', color='red', markersize=8,linestyle='None', label='Source Location', zorder=2)
     img1_flightpath = axes[0].scatter(flight_path[:,1],flight_path[:,0], color="yellow",alpha=0.7, s=10)

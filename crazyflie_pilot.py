@@ -19,7 +19,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 LOGS_SAVE = True
-#URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 deck_attached_event = Event()
 INITIAL_POSITION = [0, 0, 0]
@@ -32,14 +31,28 @@ START_TIME = False
 START_TIME_FLIGHTPATH = None
 FILEPATH="data/test.csv"
 
+TESTING_PARAMETERS = {
+              "MANUAL_TESTING_PARAMETERS": True,
+              "FLIGHTPATH" : ["Nothing","StartLand","Snake", "Cage","TestPositioning"],
+              "USE_FLIGHTPATH": 2, # 0: Nothing, 1: StartLand, 2: Snake, 3: Cage, 4: TestPositioning
+              "FLIGHTHEIGHT": 0.95,     # in m
+              "DISTANCE": 4,            # in dm
+              'WINDOW_SIZE' : [20, 20], # in dm
+              'PADDING': 1              # in dm + 5 to fly in the middle of the 1dm x 1dm grid
+  }
 
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_test_pilot")
-    URI=parameters.choose_model()
-    flightpath=parameters.choose_flightpath()
-    flightheight=parameters.choose_flightheight()
-    distance=parameters.choose_distance()
+    URI = parameters.choose_model()
+    if TESTING_PARAMETERS["MANUAL_TESTING_PARAMETERS"]:        
+        flightpath = TESTING_PARAMETERS["FLIGHTPATH"][TESTING_PARAMETERS["USE_FLIGHTPATH"]]
+        flightheight = TESTING_PARAMETERS["FLIGHTHEIGHT"]
+        distance = TESTING_PARAMETERS["DISTANCE"]
+    else:  
+        flightpath=parameters.choose_flightpath()
+        flightheight=parameters.choose_flightheight()
+        distance=parameters.choose_distance()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
     save_dataset_to_csv()
     print("DONE")
@@ -47,10 +60,6 @@ def main():
 def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703'), flightpath="Snake", flightheight=50, distance=5):
     logging.info("Crazyflie takes measurements.")
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-        #scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
-        #                                 cb=param_deck_flow)
-        #time.sleep(2)
-
         scf.cf.param.add_update_callback(group='deck', name=f'bcFlow2',
                                              cb=param_deck_flow)
         time.sleep(1)
@@ -62,8 +71,6 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
         logconf.add_variable('range.zrange', 'uint16_t')
         logconf.add_variable('sgp30.value1L', 'uint16_t')   #configuration_data.py
         logconf.add_variable('sgp30.value1R', 'uint16_t')        
-        #set_initial_position(scf, 0, 0, 0)    x = data['kalman.stateX']
-
 
         scf.cf.log.add_config(logconf)
         global FILENAME
@@ -75,12 +82,8 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
             print('[EXIT] No flow deck detected!')
             sys.exit(1)
 
-        #scf.cf.param.set_value('kalman.resetEstimation', '1')
-        #time.sleep(1)
-        #scf.cf.param.set_value('kalman.resetEstimation', '0') 
-        #time.sleep(1)
-        window_shape=init_windowshape(logconf)
-        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=[20,20],pad=1,distance=distance)
+
+        coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=TESTING_PARAMETERS['WINDOW_SIZE'],pad=TESTING_PARAMETERS['PADDING'],distance=distance)
         logconf.start()    
         #time.sleep(1)
         #scf=set_initial_position(scf,flightheight)
@@ -136,12 +139,6 @@ def fly_position_pattern(scf, flightheight):
         time.sleep(2)
         fly_landing_position(mc)
         return
-        print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-        print(f"INITIAL_POSITION: {INITIAL_POSITION}")
-        difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-        print(f"difference: {difference}")
-        mc.move_distance(difference[0],difference[1],0)
-        time.sleep(2)
 
 
 
@@ -337,40 +334,30 @@ def log_pos_callback(timestamp, data, logconf):
     #GAS_DISTRIBUTION[1] = data['sgp30.value1L']
     #GAS_DISTRIBUTION[2] = data['sgp30.value1R']
 
-    add_dataset_async(timestamp, data)
-    if START_TIME:
-        DATASET_FLIGHTPATH.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['sgp30.value1L'],data['sgp30.value1R']])
-    
+    add_dataset_complete_async(timestamp, data)
+    # without using the async function: 
+    # DATASET_COMPLETE.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['sgp30.value1L'],data['sgp30.value1R']])
 
-    # Save data to CSV asynchronously to avoid slowing down the callback
-    #save_data_async(timestamp - START_TIME, POSITION_ESTIMATE, GAS_DISTRIBUTION)
+    if START_TIME:
+        add_dataset_flightpath_async(timestamp, data)
+        # without using the async function: 
+        # DATASET_FLIGHTPATH.append([timestamp, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'), data['sgp30.value1L'],data['sgp30.value1R']])
 
 
 executor = ThreadPoolExecutor(max_workers=1)
+def add_dataset_complete_async(t, data):
+    executor.submit(save_to_complete_list, t, data)
 
-def add_dataset_async(t, data):
-    executor.submit(save_to_list, t, data)
-
-def save_to_list(t, data):
+def save_to_complete_list(t, data):
     global DATASET_COMPLETE
     DATASET_COMPLETE.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'),data['sgp30.value1L'],data['sgp30.value1R']])
 
+def add_dataset_flightpath_async(t, data):
+    executor.submit(save_to_flight_list, t, data)
 
-
-#def set_initial_position(scf,flightheight):
-  #  scf.cf.param.set_value('kalman.initialX', INITIAL_POSITION[0])
-  #  scf.cf.param.set_value('kalman.initialY', INITIAL_POSITION[1])
- #   scf.cf.param.set_value('kalman.initialZ', flightheight)
-  #  return scf
-
-def init_windowshape(logconf):
-    #logconf.start()
-    #global POSITION_ESTIMATE
-    #end_x,end_y=POSITION_ESTIMATE[0],POSITION_ESTIMATE[1]
-    #logconf.stop()
-    pass
-    
-
+def save_to_flight_list(t, data):
+    global DATASET_FLIGHTPATH
+    DATASET_FLIGHTPATH.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'),data['sgp30.value1L'],data['sgp30.value1R']])
 
 
 

@@ -20,7 +20,7 @@ HYPER_PARAMETERS = {
   }
 
 TESTING_PARAMETERS = {
-                "MODEL_TO_TEST": 0,
+                "MODEL_TO_TEST": 1,
 }
 
 def main():

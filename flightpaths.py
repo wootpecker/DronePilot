@@ -211,22 +211,13 @@ def generate_coordinates_s_shape(dataset_GDM,distance=1,pad=1,start_zero=True):
     return coordinates
 
 def generate_coordinates_cage(dataset_GDM,distance=3,pad=2):
-    #print(f"cage, distance: {distance}")
     coordinatesfirst=generate_coordinates_s_shape(dataset_GDM,distance=distance,pad=pad,start_zero=True)
-
-    #print(f"coordinatesfirst[-1][1]: {coordinatesfirst[-1][1]}")
-    #print(f"coordinatesfirst[-1][0]: {coordinatesfirst[-1][0]}")
-    #print(f"dataset_GDM[-1]/2:{dataset_GDM[-1]/2}")
     if coordinatesfirst[-1][0]>dataset_GDM[-1]/2:
-        #print(distance)
         coordinatessecond=generate_coordinates_s_shape_rotate_up(dataset_GDM,distance=distance,pad=pad,start_zero=True)
     else:
         coordinatessecond=generate_coordinates_s_shape_rotate(dataset_GDM,distance=distance,pad=pad,start_zero=False)
     if(coordinatessecond[0][0]==coordinatesfirst[len(coordinatesfirst)-1][0] and coordinatessecond[0][1]==coordinatesfirst[len(coordinatesfirst)-1][1]):
         coordinatessecond.pop(0)
-    #coordinatessecond.pop(0)
-
-    #coordinatessecond=[]
     coordinatesfirst.extend(coordinatessecond)
     return coordinatesfirst
 

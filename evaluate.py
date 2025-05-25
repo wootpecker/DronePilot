@@ -59,20 +59,10 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
     imageGasR=torch.FloatTensor(size=window_size)
 
     for i in range(len(X)):
-        #print(X.iloc[i], Y.iloc[i], Time.iloc[i])
-        #if Gas1L.iloc[i]==1 or Gas1R.iloc[i]==1:
-        #    imageGasL[X.iloc[i], Y.iloc[i]]=1/float(Gas1L.iloc[i]+0.1)            
-        #    imageGasR[X.iloc[i], Y.iloc[i]]=1/float(Gas1R.iloc[i]+0.1)
-        ##elif Gas1L.iloc[i]<3 or Gas1R.iloc[i]<3:
-        #    #print(Gas1R.iloc[i],Gas1L.iloc[i])
-        ##print(Gas1R.iloc[i],Gas1L.iloc[i])
-        #else:
-        #    imageGasL[X.iloc[i], Y.iloc[i]]=1/float(Gas1L.iloc[i])         
-        #    imageGasR[X.iloc[i], Y.iloc[i]]=1/float(Gas1R.iloc[i])
+
             imageGasL[X.iloc[i], Y.iloc[i]]=Gas1L.iloc[i]       
             imageGasR[X.iloc[i], Y.iloc[i]]=Gas1R.iloc[i]
 
-        #imageGasL[X.iloc[i], Y.iloc[i]]=Gas1L.max()/Gas1L.iloc[i]
     imageGasL=imageGasL.unsqueeze(-1)
     imageGasR=imageGasR.unsqueeze(-1)   
     fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -80,12 +70,6 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
     ax1.set_title('Gas Distribution Left')
     ax2.imshow(imageGasR, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax2.set_title('Gas Distribution Right')
-    #fig,ax=plt.subplot(1, 2, 1)
-    #fig.add_subplot
-    #plt.imshow(imageGasL, cmap='turbo', origin="lower")
-    #plt.imshow(imageGasR, cmap='turbo', origin="lower")
-
-    #df.plot()
     plt.show()
 
 
@@ -101,7 +85,6 @@ def plot_flightpath(df, window_size=WINDOW_SIZE):
     Time=df_plot['Time']
     image=torch.Tensor(size=window_size)
     for i in range(len(X)):
-        #print(X.iloc[i], Y.iloc[i], Time.iloc[i])
         image[X.iloc[i], Y.iloc[i]]=Time.iloc[i]
     image.unsqueeze(-1)
     turbo = plt.cm.get_cmap("turbo", 256)
@@ -128,20 +111,16 @@ def transform_column(df):
     Y_copy=Y.copy()
     for i, x in enumerate(X):
         y = Y[i]
-        #print(Z[i])
         if x==old_x and y == old_y:# or Z[i]<20:
             X_copy.drop(i, inplace=True)
             Y_copy.drop(i, inplace=True)
             Time.drop(i, inplace=True)
             Gas1L.drop(i, inplace=True)
             Gas1R.drop(i, inplace=True)
-           # X.drop(i)
-           #Y.drop(i)
-           # Time.drop(i)
+
         else:        
             old_x,old_y=x,y         
     result = pd.DataFrame({'Time':Time,'X': X_copy, 'Y': Y_copy, 'Gas1L': Gas1L, 'Gas1R': Gas1R})
-    #result['X'].min
     return result
 
 def transform_m_cm(df_column):
