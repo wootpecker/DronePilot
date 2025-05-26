@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-import parameters
+import parameter_input_console
 import numpy as np
+import utils
 
 NAMES=["first","F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
 EXAMPLE=NAMES[0]
@@ -13,36 +14,17 @@ LOGS_SAVE = False
 WINDOW_SIZE=[250,250]
 
 def main():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = load_csv(parameters.PARAMETERS[1],EXAMPLE)
-    plot_flightpath(df)
-    plot_gdm(df)
+    test_all()
 
 
 def test_all():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = load_csv(parameters.PARAMETERS[1],EXAMPLE)
+    df = utils.load_csv(None,EXAMPLE)
+    df = df[0]
     plot_flightpath(df)
     plot_gdm(df)    
 
-def load_csv(flightpath, file=None):       
-    if file == "first":
-        files = [f for f in os.listdir("data") if os.path.isfile(os.path.join("data", f))]
-        files = files[0]
-        file_path=f"data/{files}"
-    elif file:
-        file_path=f"data/GSL_{flightpath}_0.3_{file}.csv"        
-    else:
-        file_path=f"data/GSL_{flightpath}_0.3_C.csv"
-    logging.info(f"[DATA] Loading CSV from: {file_path}.")         
-    try:    
-        df = pd.read_csv(file_path)
-        logging.info(f"[DATA] Columns: {', '.join(df.columns)}")
-        return df
-    except:
-        logging.error(f"[DATA] Could not load file: {file_path}")
-        return None
-    
+
 def plot_gdm(df, window_size=WINDOW_SIZE):
     logging.info("Plottting Gas Distribution.")    
     df_plot=transform_column(df=df)
@@ -70,9 +52,8 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
     ax1.set_title('Gas Distribution Left')
     ax2.imshow(imageGasR, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax2.set_title('Gas Distribution Right')
+    plt.colorbar(ax2.imshow(imageGasL, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max()), ax=ax2, label='Gas Concentration')
     plt.show()
-
-
 
 
 
@@ -86,14 +67,13 @@ def plot_flightpath(df, window_size=WINDOW_SIZE):
     image=torch.Tensor(size=window_size)
     for i in range(len(X)):
         image[X.iloc[i], Y.iloc[i]]=Time.iloc[i]
-    image.unsqueeze(-1)
-    turbo = plt.cm.get_cmap("turbo", 256)
-    colors = turbo(np.linspace(0, 1, 256))
-    colors[0] = [1, 1, 1, 1] 
-    from matplotlib.colors import LinearSegmentedColormap
-    turbo_white = LinearSegmentedColormap.from_list("turbo_white", colors)        
-    plt.imshow(image, cmap=turbo_white, origin="lower")#'turbo', origin="lower")
+    image.unsqueeze(-1)     
+    plt.imshow(image, cmap='turbo', origin="lower")#'turbo', origin="lower")
     plt.title("Flightpath")
+    plt.xlabel("X in cm")
+    plt.ylabel("Y in cm")
+    plt.colorbar(label='Time (ms)')
+    
     plt.show()
 
 def transform_column(df):

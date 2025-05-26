@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 #import ..model_dataloader as model_dataloader
 from logs import logger
 import transform_measurements
-import parameters
+import parameter_input_console
 import model_builder
 import random
 import pandas as pd
@@ -56,7 +56,7 @@ PRED=[]
 
 def main():
     logger.logging_config(logs_save=HYPER_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
-    dfs = utils.load_csv(parameters.PARAMETERS[1],EXAMPLE)
+    dfs = utils.load_csv(None,EXAMPLE)
     model_type=MODEL_TO_TEST[0]
     model = model_builder.choose_model(model_type=model_type,output_shape=HYPER_PARAMETERS['WINDOW_SIZE'][0]*HYPER_PARAMETERS['WINDOW_SIZE'][1],device=device,window_size=HYPER_PARAMETERS['WINDOW_SIZE'])
     model,_ = load_model(model=model, model_type=model_type, device=device)

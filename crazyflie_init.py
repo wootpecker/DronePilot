@@ -3,13 +3,12 @@ import logging
 
 
 
-def initialize():
+def initialize(start=0, end=5):
     logging.info('[INIT] Initialize Crazyflie drivers.')
     cflib.crtp.init_drivers()
     logging.info('[INIT] Scanning interfaces for Crazyflies...')
-    end = 5
     possible_crazyflies = []
-    for i in range(end):
+    for i in range(start, end):
         address=int('E7E7E7E700', 16)+i
         address_str=f'E7E7E7E7{i:02d}'
         available = cflib.crtp.scan_interfaces(address=address)

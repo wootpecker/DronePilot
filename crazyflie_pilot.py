@@ -1,12 +1,10 @@
-import cflib.crtp
 import logs.logger as logger
 import logging
 import flightpaths
-import parameters
+import parameter_input_console
 import sys
 import time
 from threading import Event
-import pandas as pd
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
@@ -38,21 +36,25 @@ TESTING_PARAMETERS = {
               "FLIGHTHEIGHT": 0.95,     # in m
               "DISTANCE": 4,            # in dm
               'WINDOW_SIZE' : [20, 20], # in dm
-              'PADDING': 1              # in dm + 5 to fly in the middle of the 1dm x 1dm grid
+              'PADDING': 1,             # in dm + 5 to fly in the middle of the 1dm x 1dm grid
+              'CRAZYFLIE_URI': [0,5]    # start and end of the crazyflie number to search for
   }
 
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_test_pilot")
-    URI = parameters.choose_model()
+    
     if TESTING_PARAMETERS["MANUAL_TESTING_PARAMETERS"]:        
         flightpath = TESTING_PARAMETERS["FLIGHTPATH"][TESTING_PARAMETERS["USE_FLIGHTPATH"]]
         flightheight = TESTING_PARAMETERS["FLIGHTHEIGHT"]
         distance = TESTING_PARAMETERS["DISTANCE"]
+        URI = parameter_input_console.choose_model(start=TESTING_PARAMETERS['CRAZYFLIE_URI'][0], end=TESTING_PARAMETERS['CRAZYFLIE_URI'][1])
     else:  
-        flightpath=parameters.choose_flightpath()
-        flightheight=parameters.choose_flightheight()
-        distance=parameters.choose_distance()
+        URI = parameter_input_console.choose_model()
+        flightpath=parameter_input_console.choose_flightpath()
+        flightheight=parameter_input_console.choose_flightheight()
+        distance=parameter_input_console.choose_distance()
+        URI = parameter_input_console.choose_model()
     crazyflie_take_measurements(URI=URI, flightpath=flightpath, flightheight=flightheight, distance=distance)
     save_dataset_to_csv()
     print("DONE")

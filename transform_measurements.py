@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-import parameters
+import parameter_input_console
 import numpy as np
 import utils
 
@@ -18,7 +18,7 @@ TRANFORM_TO_CENTER=True
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = utils.load_csv(parameters.PARAMETERS[1],EXAMPLE)
+    df = utils.load_csv(None,EXAMPLE)
     plot_gdm(df)
 
 
@@ -48,7 +48,7 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
     img2=ax2.imshow(imageGasR, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
     ax2.set_title('Gas Distribution Right')
     im1 = ax1.imshow(imageGasL, cmap="turbo", origin="lower", vmin=0, vmax=Gas1R.max())
-    plt.colorbar(img1, ax=ax1)
+    plt.colorbar(img2, ax=ax2, label='Gas Concentration')
     #plt.colorbar(img2, ax=ax2)
     plt.show()
     return imageGasL, imageGasR

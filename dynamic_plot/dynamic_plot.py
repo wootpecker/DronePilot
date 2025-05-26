@@ -3,16 +3,17 @@ import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-import evaluate
+import visualize
 import matplotlib.animation as animation
-import parameters
+import parameter_input_console
 
 LOGS_SAVE = False
 FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
+PARAMETERS=[0.3,"Snake",3]#height,flightpath,distance
 
 def main():
     logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_pilot") 
-    dynamic_plot(parameters.PARAMETERS[1],window_size=[300,300])   
+    dynamic_plot(parameter_input_console.PARAMETERS[1],window_size=[300,300])   
     
 def dynamic_plot(flightpath="TestPositioning",window_size=[100,100]):  
     logger.logging_config(logs_save=LOGS_SAVE)  
@@ -29,7 +30,7 @@ def dynamic_plot(flightpath="TestPositioning",window_size=[100,100]):
 
 
 def update_plot(frame, fig, ax, flightpath="TestPositioning", window_size=[200,200]):
-    df = evaluate.load_csv(flightpath)
+    df = visualize.load_csv(flightpath)
     if df is not None and not df.empty:
         logging.info("Plottting.")  
         ax.clear()

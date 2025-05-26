@@ -7,8 +7,8 @@ FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
 #PARAMETERS=[0.3,"Snake",3]#height,flightpath,distance
 
 
-def choose_model():
-    crazyflies=crazyflie_init.initialize()
+def choose_model(start=0, end=5):
+    crazyflies=crazyflie_init.initialize(start=start, end=end)
     #crazyflies=['E7E7E7E703','E7E7E7E7E2','E7E7E7E7E7']
     if len(crazyflies)==0:
         logging.info("[EXIT] No Crazyflies found.")
