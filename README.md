@@ -28,23 +28,23 @@ DronePilot is a Python-based toolkit for generating flight paths and measuring g
 
 ## Getting Started
 
-1. **Install dependencies**
+1. **Install dependencies**  <br/>
    Make sure you have Python 3.8+ installed. Install required packages:<br/>
    pip install -r requirements.txt<br/>
    My advice: install pytorch from https://pytorch.org/get-started/locally/ for enabling GPU
 
-2. **Take gas measurements**
+2. **Take gas measurements**<br/>
     Set testing parameters and take measurments
 
 3. **Evaluate flight**<br/>
     Evaluate flight with:
     python visualize.py
 
-4. **Make predictions**
+4. **Make predictions**<br/>
     Evaluate flights with ML models and plot results:<br/>
     python ml_predictions.py
 
-5. **Evaluate results**
-    Add
-    Evaluate flights with ML models and plot results:<br/>
-    python ml_predictions.py
+5. **Evaluate results**<br/>
+    
+    Evaluate experiment results by placing results into utils.py to calculate avg. Euclidean distance and plotting results with:<br/>
+    python plot_predictions.py
