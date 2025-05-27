@@ -1,3 +1,61 @@
+"""
+crazyflie_pilot.py
+
+This module provides the main control logic for piloting a Crazyflie drone, including flight path execution,
+data logging, and measurement collection. It supports various predefined flight patterns (e.g., Snake, Cage, ...),
+handles sensor data acquisition, and saves flight logs for later evaluation.
+
+-----------------------------
+Testing Parameters:
+- LOGS_SAVE (bool): Enable or disable logging.
+- MANUAL_TESTING_PARAMETERS (bool): Enable manual testing mode for parameter selection, if False input console is utilized.
+- FLIGHTPATH (list): List of available flight paths for the drone.
+- USE_FLIGHTPATH (int): Index of the flight path to use from the FLIGHTPATH list.
+- FLIGHTHEIGHT (float): Height at which the drone will fly, in meters.
+- DISTANCE (int): Distance between measurement points (identical to simulation), in decimeters.
+- WINDOW_SIZE (list): Size of the flight window in decimeters.
+- PADDING (int): Padding around the flight window in decimeters, added to ensure the drone flies in the middle of the grid.
+- CRAZYFLIE_URI (list): Range of Crazyflie URIs to search for, specified as [start, end].
+
+Constants:
+- INITIAL_POSITION (x,y,height): Initial position of the drone before start.
+- POSITION_ESTIMATE (x,y,height): Estimated position of the drone during flight.
+- DATASET_FLIGHTPATH: List to store data during the flight, beginning from start to end of flight pattern.
+- DATASET_COMPLETE: List to store complete dataset including all measurements.
+- FILENAME: Base name for the CSV files where flight data will be saved.
+- START_TIME (bool): Flag to indicate if the flight has started, used for logging purposes.
+
+-----------------------------
+Functions:
+- main():
+    Entry point for the script. Handles parameter selection and starts the measurement routine.
+
+- crazyflie_take_measurements():
+    Connects to the Crazyflie, sets up logging, and executes the selected flight pattern.
+
+- fly_snake_pattern(), fly_cage_pattern(), fly_position_pattern(), fly_start_land(), fly_snake_pattern_absolute():
+    Implement specific flight routines using the MotionCommander or crazyflie (for absolute positioning) interface.
+
+- log_pos_callback():
+    Callback for logging position and sensor data during flight, implemented with or without asynchronous logging.
+
+- save_dataset_to_csv():
+    Exports collected datasets to CSV files for further analysis.
+
+- Utility functions:
+    - set_starting_position(), fly_landing_position(), fly_take_off(), etc.
+
+-----------------------------
+Dependencies:
+- cflib, threading, logging, csv, pathlib, concurrent.futures
+- Custom modules: logs.logger, flightpaths, parameter_input_console
+
+-----------------------------
+Usage:
+Run this script directly to collect sensor data with the drone, with:
+python crazyflie_pilot.py
+
+"""
 import logs.logger as logger
 import logging
 import flightpaths
@@ -16,23 +74,21 @@ import csv
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-LOGS_SAVE = True
-FLIGHT_PATH = ["Nothing","StartLand","Snake", "Cage","TestPositioning"]
+
 deck_attached_event = Event()
 INITIAL_POSITION = [0, 0, 0]
 POSITION_ESTIMATE = [0, 0, 0]
-GAS_DISTRIBUTION = [0, 0, 0]
+#GAS_DISTRIBUTION = [0, 0, 0] for testing purposes, not used in this script
 DATASET_FLIGHTPATH = []
 DATASET_COMPLETE = []
 FILENAME="GSL"
 START_TIME = False
-START_TIME_FLIGHTPATH = None
-FILEPATH="data/test.csv"
 
 TESTING_PARAMETERS = {
+              "LOGS_SAVE": True,
               "MANUAL_TESTING_PARAMETERS": True,
-              "FLIGHTPATH" : ["Nothing","StartLand","Snake", "Cage","TestPositioning"],
-              "USE_FLIGHTPATH": 2, # 0: Nothing, 1: StartLand, 2: Snake, 3: Cage, 4: TestPositioning
+              "FLIGHTPATH" : ["Nothing","StartLand","Snake","Snake_Long_Sampling","Snake_Absolute","Cage","TestPositioning"],
+              "USE_FLIGHTPATH": 2,      # 0: Nothing, 1: StartLand, 2: Snake, 3: Snake_Long_Sampling, 4: Snake_Absolute, 5: Cage, 6: TestPositioning
               "FLIGHTHEIGHT": 0.95,     # in m
               "DISTANCE": 4,            # in dm
               'WINDOW_SIZE' : [20, 20], # in dm
@@ -42,7 +98,7 @@ TESTING_PARAMETERS = {
 
 
 def main():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_test_pilot")
+    logger.logging_config(logs_save=TESTING_PARAMETERS['LOGS_SAVE'], filename="crazyflie_test_pilot")
     
     if TESTING_PARAMETERS["MANUAL_TESTING_PARAMETERS"]:        
         flightpath = TESTING_PARAMETERS["FLIGHTPATH"][TESTING_PARAMETERS["USE_FLIGHTPATH"]]
@@ -87,10 +143,6 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
 
         coordinates=flightpaths.flightpath_to_coordinates(flightpath=flightpath,window_shape=TESTING_PARAMETERS['WINDOW_SIZE'],pad=TESTING_PARAMETERS['PADDING'],distance=distance)
         logconf.start()    
-        #time.sleep(1)
-        #scf=set_initial_position(scf,flightheight)
-        #dynamic_plot.dynamic_plot(flightpath=flightpath,window_size=[100,100])
-        #time.sleep(2)
         cf = scf.cf
         cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(0.1)
@@ -108,8 +160,15 @@ def crazyflie_take_measurements(URI=uri_helper.uri_from_env(default='radio://0/8
             print("Flightpath: TestPositioning")            
             fly_position_pattern(scf,flightheight)        
         elif(flightpath=="Snake"):
-            print("Flightpath: Snake")                        
-            fly_snake_pattern(scf, flightheight, coordinates)
+            print(f"Flightpath: {flightpath}, Flightheight: {flightheight}, Distance: {distance}")                        
+            if flightpath=="Snake":
+                longer_sampling = False
+            else:
+                longer_sampling = True                
+            fly_snake_pattern(scf, flightheight, coordinates, longer_sampling)
+        elif(flightpath=="Snake_Absolute"):
+            print(f"Flightpath: {flightpath}, Flightheight: {flightheight}, Distance: {distance}")                        
+            fly_snake_pattern_absolute(scf, flightheight, coordinates)
         elif(flightpath=="Cage"):
             print("Flightpath: Cage")                        
             fly_cage_pattern(scf, flightheight, coordinates)
@@ -144,7 +203,7 @@ def fly_position_pattern(scf, flightheight):
 
 
 
-def fly_snake_pattern(scf, flightheight, coordinates):
+def fly_snake_pattern(scf, flightheight, coordinates, longer_sampling=True):
     global START_TIME
     count_x=0
     count_y=0
@@ -162,7 +221,6 @@ def fly_snake_pattern(scf, flightheight, coordinates):
             print(f"count_x:{count_x}{relative_positions[x]}")
             count_y=0
 
-    #print(relative_positions)
     with MotionCommander(scf, default_height=flightheight) as mc:
         fly_take_off(mc,flightheight)      
         time.sleep(0.6) 
@@ -172,23 +230,19 @@ def fly_snake_pattern(scf, flightheight, coordinates):
         time.sleep(0.6) 
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0) 
-            #time.sleep(1.5)
+            if longer_sampling: 
+                time.sleep(0.5)
             if(koordinate[1]):
                 print("turn")
         START_TIME = False
-       # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-        #print(f"INITIAL_POSITION: {INITIAL_POSITION}")
         fly_landing_position(mc)  
         time.sleep(2)        
         mc.stop()
         time.sleep(2)   
 
 
-def fly_snake_pattern2(cf, flightheight, coordinates):
-
-    #cf = scf.cf
+def fly_snake_pattern_absolute(cf, flightheight, coordinates):
     global START_TIME
-
     relative_positions=[]
     coordinates.insert(0,[0,0])
     for x in range(len(coordinates)-1):
@@ -201,18 +255,14 @@ def fly_snake_pattern2(cf, flightheight, coordinates):
     for _ in range(20):
         cf.commander.send_hover_setpoint(starting_position[0],starting_position[1],0,0.3)
         time.sleep(0.1)
-    #time.sleep(0.5)        
     for koordinate in relative_positions:
         for x in range(10):
             cf.commander.send_hover_setpoint(koordinate[0],koordinate[1], 0, flightheight)
             time.sleep(0.1)
-
         #time.sleep(0.2)
         if(koordinate[1]):
             print("turn")
     START_TIME = False
-       # print(f"POSITION_ESTIMATE: {POSITION_ESTIMATE}")
-        #print(f"INITIAL_POSITION: {INITIAL_POSITION}")
     fly_landing_position_test(cf,flightheight)  
   
 def fly_landing_position_test(cf,flightheight):
@@ -245,19 +295,13 @@ def fly_cage_pattern(scf, flightheight, coordinates):
   
         for koordinate in relative_positions:
             mc.move_distance(koordinate[0],koordinate[1],0)
-            #time.sleep(0.1)
         START_TIME = False
 
         fly_landing_position(mc)    
-       # difference = [INITIAL_POSITION[i] - POSITION_ESTIMATE[i]  for i in range(len(POSITION_ESTIMATE))]
-       # mc.move_distance(difference[0],difference[1],0)
         time.sleep(2)        
         mc.stop()
         time.sleep(2)        
 
-
-
-    #for koordinate in coordinates:
 
 def fly_landing_position(mc):
     print("Landing")
@@ -309,12 +353,6 @@ def fly_landing(scf, flightheight):
         print("mc.stop")
         time.sleep(5)
 
-def reset_log():
-    global START_TIME_FLIGHTPATH, GAS_DISTRIBUTION, DATASET_FLIGHTPATH
-    START_TIME_FLIGHTPATH = None
-    DATASET_FLIGHTPATH = []
-
-
 def param_deck_flow(_, value_str):
     value = int(value_str)
     logging.info(f"Deck Flow Value: {value}")
@@ -362,13 +400,6 @@ def save_to_flight_list(t, data):
     DATASET_FLIGHTPATH.append([t, format(data['stateEstimate.x'], '.10f'), format(data['stateEstimate.y'], '.10f'),format(data['stateEstimate.z'], '.10f'),data['sgp30.value1L'],data['sgp30.value1R']])
 
 
-
-def save_to_csv(t, position_estimate, gas_distribution):
-    with open(FILEPATH, 'a+', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow([t, format(position_estimate[0], '.10f'), format(position_estimate[1], '.10f'), format(position_estimate[2], '.10f'),
-                            format(position_estimate[0] - INITIAL_POSITION[0], '.10f'), format(position_estimate[1] - INITIAL_POSITION[1], '.10f'),
-                            format(position_estimate[2] - INITIAL_POSITION[2], '.10f'), gas_distribution[0], gas_distribution[1], gas_distribution[2]])
 
 
 

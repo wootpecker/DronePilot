@@ -1,21 +1,52 @@
 """
-Utility functions to make predictions.
+ML_predictions.py
 
-Main reference for code creation: https://www.learnpytorch.io/06_pytorch_transfer_learning/#6-make-predictions-on-images-from-the-test-set 
+This module provides functionality for loading trained machine learning models, transforming measurement data,
+making predictions, and visualizing results for gas source localization using data collected by a nano-drone.
+
+-----------------------------
+Testing Parameters:
+- TRANSFORM (bool): Whether to use the transformed dataset for evaluation.
+- MODEL_TYPES: model types to use for predictions.
+- LOGS_SAVE (bool): Boolean to control whether logs are saved.
+- WINDOW_SIZE (list): Size of the input grid for predictions.
+- PREDICT_WITH_MODEL_TYPE (int): Index of the model type to use for predictions.
+
+
+
+-----------------------------
+Key Parameters:
+- TESTING_PARAMETERS: Dictionary controlling model type, window size, logging, and other settings.
+- WINDOW_SIZE: Size of the input grid for predictions.
+- NAMES: List of dataset names for evaluation.
+- EXAMPLE: Selected dataset for demonstration.
+- TRANFORM_TO_CENTER, SHOW_PLOT: Visualization and transformation flags.
+
+-----------------------------
+Functions:
+- main(): Entry point; loads data, model, and runs predictions/visualizations.
+- transform_data(): Converts measurement DataFrame to normalized image arrays.
+- do_predictions(): Runs the model on input data and returns predictions.
+- load_model(): Loads model weights from disk.
+- plot_predictions(), plot_predictions3(): Visualizes predictions and ground truth.
+
+-----------------------------
+Dependencies:
+- torch, torchvision, matplotlib, numpy, pandas, logging, pathlib, os
+- Custom modules: logs.logger, transform_measurements, parameter_input_console, model_builder, flightpaths, utils
+
+-----------------------------
+Usage:
+Run this script to evaluate trained models on drone-collected gas distribution data and visualize results.
+
+Main reference for code creation: https://www.learnpytorch.io/06_pytorch_transfer_learning/#6-make-predictions-on-images-from-the-test-set
 """
 import torch
-import torchvision
-from torchvision import transforms
 import matplotlib.pyplot as plt
-from typing import Dict, List, Tuple
 #import ..model_dataloader as model_dataloader
 from logs import logger
 import transform_measurements
-import parameter_input_console
 import model_builder
-import random
-import pandas as pd
-import math
 import logging
 from pathlib import Path
 import os
@@ -28,37 +59,31 @@ import utils
 # Set device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-HYPER_PARAMETERS = {
-              "SAVE_DATASET": False,
-               "TRANSFORM": False,
+TESTING_PARAMETERS = {
                "MODEL_TYPES": ["VGG8", "UnetS"],
                "LOGS_SAVE": False,
-               "AMOUNT_SAMPLES": 16,
-               "WINDOW_SIZE": [64,64]
+               "WINDOW_SIZE": [64,64],
+               "PREDICT_WITH_MODEL_TYPE": 1,                    # Model to predict with if PLOT_1_MODEL is True, 0: VGG8, 1: UnetS
   }
 
 
 
 LOGS_SAVE = False
-WINDOW_SIZE=HYPER_PARAMETERS['WINDOW_SIZE']
+WINDOW_SIZE=TESTING_PARAMETERS['WINDOW_SIZE']
 NAMES=["all","A","A_invers","B","B_invers"]
 EXAMPLE=NAMES[3]
 TRANFORM_TO_CENTER=True
 SHOW_PLOT=False
 
 
-
-MODEL_TO_TEST=[HYPER_PARAMETERS['MODEL_TYPES'][1],HYPER_PARAMETERS['MODEL_TYPES'][1]]
-#MODEL_TO_TEST=(HYPER_PARAMETERS['MODEL_TYPES'][0],HYPER_PARAMETERS['MODEL_TYPES'][1],HYPER_PARAMETERS['MODEL_TYPES'][2])
-
 BENCH=[]
 PRED=[]
 
 def main():
-    logger.logging_config(logs_save=HYPER_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
+    logger.logging_config(logs_save=TESTING_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
     dfs = utils.load_csv(None,EXAMPLE)
-    model_type=MODEL_TO_TEST[0]
-    model = model_builder.choose_model(model_type=model_type,output_shape=HYPER_PARAMETERS['WINDOW_SIZE'][0]*HYPER_PARAMETERS['WINDOW_SIZE'][1],device=device,window_size=HYPER_PARAMETERS['WINDOW_SIZE'])
+    model_type=TESTING_PARAMETERS['MODEL_TYPES'][TESTING_PARAMETERS['PREDICT_WITH_MODEL_TYPE']]
+    model = model_builder.choose_model(model_type=model_type,output_shape=TESTING_PARAMETERS['WINDOW_SIZE'][0]*TESTING_PARAMETERS['WINDOW_SIZE'][1],device=device,window_size=TESTING_PARAMETERS['WINDOW_SIZE'])
     model,_ = load_model(model=model, model_type=model_type, device=device)
     for x,df in enumerate(dfs):
         imageL,imageR = transform_data(df)
@@ -72,7 +97,7 @@ def main():
     print("Benchmarks: ",BENCH)
     print("Predictions: ",PRED)
 
-def transform_data(df, window_size=HYPER_PARAMETERS['WINDOW_SIZE'],plot=False):
+def transform_data(df, window_size=TESTING_PARAMETERS['WINDOW_SIZE'],plot=False):
     logging.info("Plottting Gas Distribution.")    
     df_plot=transform_measurements.transform_column(df=df)
     X=df_plot['X']
@@ -97,22 +122,17 @@ def transform_data(df, window_size=HYPER_PARAMETERS['WINDOW_SIZE'],plot=False):
         ax2.set_title('Gas Distribution Right')
         cbar = fig.colorbar(img1, ax=ax2, orientation='vertical')
         cbar.set_label('Intensity')
-        #cbar = plt.colorbar(img1, ax=ax1)
-        #plt.colorbar(img2, ax=ax2)
         plt.show()
     return imageGasL, imageGasR
 
 
 
 def do_predictions(image, model,model_type= "VGG"):
-    #for name, param in model.named_parameters():
-    #    if param.requires_grad:
-    #        print(f"{name}: {param.data}")
     model.eval()
     image=torch.FloatTensor(image).unsqueeze(0).unsqueeze(0).to(device)
     with torch.inference_mode():
         y_pred = model(image)
-        if model_type==HYPER_PARAMETERS["MODEL_TYPES"][1]:
+        if model_type==TESTING_PARAMETERS["MODEL_TYPES"][1]:
             y_pred_percent= torch.sigmoid(y_pred)
         else:
             y_pred_percent= torch.softmax(y_pred, dim=1)            
@@ -155,13 +175,13 @@ def load_model(model: torch.nn.Module, model_type: str, device="cuda"):
 def plot_predictions(X, y_pred, y_pred_percent):
     source_location=[9, 15]
     wind_arrow=[12, 15]
-    y_pred=y_pred.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
-    y_pred_percent=y_pred_percent.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    y_pred=y_pred.to("cpu").reshape(TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1])
+    y_pred_percent=y_pred_percent.to("cpu").reshape(TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1])
     # Compute global min and max for consistent color scaling
     vmin = X.min()
     vmax = X.max()
 
-    bench_y, bench_x = divmod(np.argmax(X).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    bench_y, bench_x = divmod(np.argmax(X).item(), TESTING_PARAMETERS['WINDOW_SIZE'][1])
     flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
     flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
     flight_path=np.array(flight_path)
@@ -177,17 +197,13 @@ def plot_predictions(X, y_pred, y_pred_percent):
     wind_direction_1_right=axes[0].annotate('', xy=(wind_arrow[0], wind_arrow[1]), xytext=(source_location[0], source_location[1]), arrowprops=dict(arrowstyle='->', color='deepskyblue', lw=2, mutation_scale=15), zorder=1)
 
     img2= axes[1].imshow(y_pred_percent_img, cmap="viridis", origin="lower", alpha=1, vmin=vmin, vmax=vmax)
-    y, x = divmod(torch.argmax(y_pred_percent).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    y, x = divmod(torch.argmax(y_pred_percent).item(), TESTING_PARAMETERS['WINDOW_SIZE'][1])
     axes[1].plot(x, y, marker='*', color='deepskyblue', markersize=15, linestyle='None', label='Model Prediction')
     
     axes[1].set_title('Model Prediction', fontsize=14)
-    #img3= axes[2].imshow(y_pred_percent_img, cmap="turbo", origin="lower",alpha=1)
 
     
-    X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
-
-
-    #img3_overlay = axes[2].imshow(X_img, cmap="viridis", origin="lower",alpha=0.9, vmin=vmin, vmax=vmax)
+    X=torch.zeros((TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1]))
     img2= axes[2].imshow(X_img, cmap="viridis", origin="lower",alpha=0.9)
     img2_flightpath = axes[2].scatter(flight_path[:,1],flight_path[:,0], color="yellow",alpha=0.7, s=10, label='Intended Flight Path')
 
@@ -196,8 +212,6 @@ def plot_predictions(X, y_pred, y_pred_percent):
     axes[2].set_title(f'Max={y_pred_percent.max():.2f} at ({x},{y})', fontsize=14)
     axes[2].plot(x, y, marker='*', color='deepskyblue', markersize=15, linestyle='None', label='Model Prediction')
     source_location_1=axes[2].plot(source_location[0], source_location[1], marker='D', color='red', markersize=8,linestyle='None', label='Source Location', zorder=2)
-    #source_location_1=axes[2].plot(9, 15, marker='D', color='red', markersize=8,linestyle='None', label='Source Location', zorder=2)
-    #wind_direction_1_right=axes[2].annotate('', xy=(11, 15), xytext=(9, 15), arrowprops=dict(arrowstyle='->', color='deepskyblue', lw=2, mutation_scale=15), zorder=1)
     wind_direction_1_right=axes[2].annotate('', xy=(wind_arrow[0], wind_arrow[1]), xytext=(source_location[0], source_location[1]), arrowprops=dict(arrowstyle='->', color='deepskyblue', lw=2, mutation_scale=15), zorder=1)
 
         #legend
@@ -221,10 +235,6 @@ def plot_predictions(X, y_pred, y_pred_percent):
         ax.label_outer() 
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.76])  # adjust as needed
     fig.colorbar(img1, cax=cbar_ax).set_label('Intensity')
-
-    #cbar = fig.colorbar(img1, ax=axes.ravel().tolist(), orientation='vertical')
-    #cbar.set_label('Intensity')
-    #plt.colorbar(img3, ax=axes[2], label="Prediction Intensity")
     plt.tight_layout(rect=[0, 0, 0.9, 1])
 
 
@@ -235,8 +245,8 @@ def plot_predictions(X, y_pred, y_pred_percent):
     plt.show()
 
 def plot_predictions3(X, y_pred, y_pred_percent):
-    y_pred = y_pred.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0], HYPER_PARAMETERS['WINDOW_SIZE'][1])
-    y_pred_percent = y_pred_percent.to("cpu").reshape(HYPER_PARAMETERS['WINDOW_SIZE'][0], HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    y_pred = y_pred.to("cpu").reshape(TESTING_PARAMETERS['WINDOW_SIZE'][0], TESTING_PARAMETERS['WINDOW_SIZE'][1])
+    y_pred_percent = y_pred_percent.to("cpu").reshape(TESTING_PARAMETERS['WINDOW_SIZE'][0], TESTING_PARAMETERS['WINDOW_SIZE'][1])
     # Compute global min and max for consistent color scaling
     vmin = X.min()
     vmax = X.max()
@@ -247,11 +257,9 @@ def plot_predictions3(X, y_pred, y_pred_percent):
     y_pred_img = y_pred[0:20, 0:20]
     y_pred_percent_img = y_pred_percent[0:20, 0:20]
     img1 = axes[0].imshow(X_img, cmap="viridis", origin="lower", alpha=1, vmin=vmin, vmax=vmax)
-    #img2 = axes[1].imshow(y_pred_percent_img, cmap="viridis", origin="lower", vmin=vmin, vmax=vmax)
-    #axes[1].set_title('Model Prediction', fontsize=14)
     img2_overlay = axes[1].imshow(X_img, cmap="viridis", origin="lower", alpha=1, vmin=vmin, vmax=vmax)
     color = "red"
-    y, x = divmod(torch.argmax(y_pred_percent).item(), HYPER_PARAMETERS['WINDOW_SIZE'][1])
+    y, x = divmod(torch.argmax(y_pred_percent).item(), TESTING_PARAMETERS['WINDOW_SIZE'][1])
     axes[1].set_title(f'Predictions, Max={y_pred_percent.max():.2f} at ({x},{y})', color=color, fontsize=14)
     axes[1].plot(x, y, marker='*', color='red', markersize=15, linestyle='None', label='Model Prediction')
     axes[1].plot(4, 15, marker='>', color='deepskyblue', markersize=10, linestyle='None', markeredgewidth=2, markerfacecolor='none', label='Gas Source Location')
@@ -263,10 +271,6 @@ def plot_predictions3(X, y_pred, y_pred_percent):
         ax.set_ylabel(f"y (dm)", fontsize=14)
         ax.set_xlabel(f"x (dm)", fontsize=14)
         ax.label_outer()
-    #cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.76])  # adjust as needed
-    #fig.colorbar(img1, cax=cbar_ax).set_label('Intensity')
-
-    #plt.tight_layout(rect=[0, 0, 0.9, 1])
     plt.show()
 
 
