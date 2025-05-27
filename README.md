@@ -37,14 +37,13 @@ DronePilot is a Python-based toolkit for generating flight paths and measuring g
     Set testing parameters and take measurments
 
 3. **Evaluate flight**<br/>
-    Evaluate flight with:
+    Evaluate flight with:<br/>
     python visualize.py
 
 4. **Make predictions**<br/>
     Evaluate flights with ML models and plot results:<br/>
     python ml_predictions.py
 
-5. **Evaluate results**<br/>
-    
+5. **Evaluate results**<br/> 
     Evaluate experiment results by calculating avg. Euclidean distance and plotting with:<br/>
     python plot_predictions.py
