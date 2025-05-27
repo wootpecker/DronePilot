@@ -46,5 +46,5 @@ DronePilot is a Python-based toolkit for generating flight paths and measuring g
 
 5. **Evaluate results**<br/>
     
-    Evaluate experiment results by placing results into utils.py to calculate avg. Euclidean distance and plotting results with:<br/>
+    Evaluate experiment results by calculating avg. Euclidean distance and plotting with:<br/>
     python plot_predictions.py

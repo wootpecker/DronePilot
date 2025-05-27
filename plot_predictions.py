@@ -1,3 +1,55 @@
+"""
+plot_predictions.py
+
+This module provides visualization utilities for plotting model predictions on all experiment results.
+It supports plotting different source locations and model types, and visualizes intended flight paths, source locations, wind directions, and model predictions.
+
+-----------------------------
+HYPER_PARAMETERS (dict):
+Constants:
+- HYPER_PARAMETERS (dict): Hyperparameters for plotting and model selection.
+- TESTING_PARAMETERS (dict): Parameters for selecting which model to test.
+
+-----------------------------
+Functions:
+- main():
+    Entry point for running the plotting routines.
+
+- plot_prediction_A(model_type):
+    Plots ML predictions for source location A, including intended flight path, gas source, wind direction, and predictions.
+
+- plot_prediction_B(model_type):
+    Plots ML predictions for source location B, including intended flight path, gas source, wind direction, and predictions.
+
+- plot_predictions2(model_type):
+    Plots ML predictions for both source locations A and B side by side.
+
+- plot_predictions3():
+    Plots ML predictions for three different positions for demonstration purposes.
+
+- make_legend_arrow(...):
+    Utility for creating custom legend arrows.
+
+- euclidean_distance(x, y):
+    Computes the Euclidean distance between two points.
+
+- calculate_euclidean_distance(...):
+    Calculates average Euclidean distance between predictions and source locations.
+
+-----------------------------
+Dependencies:
+- torch, numpy, matplotlib, logging
+- Custom modules: flightpaths, utils, logs.logger
+
+-----------------------------
+Usage:
+- Run this module directly to visualize predictions:
+        python plot_predictions.py
+
+- Import and use plotting functions in other scripts for custom visualization.
+"""
+
+
 import torch
 import matplotlib.pyplot as plt
 import flightpaths

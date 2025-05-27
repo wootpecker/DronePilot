@@ -1,3 +1,38 @@
+"""
+parameter_input_console.py
+
+This module provides a console-based interface for selecting parameters required to operate a Crazyflie drone in the DronePilot project.
+It allows the user to select the drone, flight path, flight height, and measurement distance interactively.
+
+-----------------------------
+Constants:
+- FLIGHT_PATH (list): List of available flight paths for the drone.
+
+-----------------------------
+Functions:
+- choose_model(start, end):
+    Scans for available Crazyflie drones and allows the user to select one for connection.
+
+- choose_flightpath():
+    Presents available flight paths and allows the user to select one.
+
+- choose_flightheight():
+    Prompts the user to input the desired flight height within a specified range.
+
+- choose_distance():
+    Prompts the user to input the distance between measurements within a specified range.
+
+-----------------------------
+Dependencies:
+- sys, logging, cflib.utils.uri_helper
+- Custom module: crazyflie_init
+
+-----------------------------
+Usage:
+- Import and call the parameter selection functions in your drone control scripts to obtain user-defined parameters for flight.
+"""
+
+
 import crazyflie_init
 import sys
 import logging

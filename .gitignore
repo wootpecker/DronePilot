@@ -1,6 +1,7 @@
 model/
 old/
 model/
+cache/
 /logs/*
 !logs/logger.py
 __pycache__/

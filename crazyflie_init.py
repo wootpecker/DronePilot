@@ -1,5 +1,26 @@
+"""
+crazyflie_init.py
+
+This module initializes the Crazyflie drivers and scans for available Crazyflie drones on the network.
+
+-----------------------------
+Functions:
+- initialize(start, end):
+    Initializes the Crazyflie drivers and scans for available Crazyflie interfaces within the specified address range.
+    Returns a list of found Crazyflie addresses.
+
+-----------------------------
+Dependencies:
+- cflib.crtp, logging
+
+-----------------------------
+Usage:
+- Import and call initialize() to set up drivers and scan for Crazyflies
+"""
+
 import cflib.crtp
 import logging
+from crazyflie_init import initialize
 
 
 
