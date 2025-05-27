@@ -2,8 +2,8 @@ model/
 old/
 model/
 cache/
-/logs/*
 !logs/logger.py
+logs/*
 __pycache__/
 pycache/*
 helper/pycache/*
