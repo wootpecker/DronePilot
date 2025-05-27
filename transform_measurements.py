@@ -1,30 +1,74 @@
+"""
+transform_measurements.py
+
+This module provides functions for transforming and visualizing measurement data collected by a nano-drone.
+It includes utilities to convert measurement coordinates and gas concentrations for ML integration.
+
+-----------------------------
+Testing Parameters:
+- LOGS_SAVE (bool): Whether to save logs.
+- WINDOW_SIZE (list): Size of the grid for plotting.
+- NAMES (list): List of dataset names.
+- NAME_TO_USE (int): Index of the dataset to use for testing.
+
+-----------------------------
+Functions:
+- main():
+    Entry point for the script. Loads data and visualizes gas distribution.
+
+- plot_gdm(df, window_size):
+    Plots the gas distribution map for the provided DataFrame.
+
+- transform_column(df):
+    Transforms DataFrame columns for plotting and analysis.
+
+- transform_m_cm(df_column):
+    Converts meters to centimeters and casts to int.
+
+- transform_m_dm(df_column):
+    Converts meters to decimeters and casts to int.
+
+- transform_gas_concentration(df_column):
+    Normalizes gas concentration values.
+
+-----------------------------
+Dependencies:
+- pandas, matplotlib, torch, numpy, logging
+- Custom modules: logs.logger, utils
+
+-----------------------------
+Usage:
+Run this script to visualize gas concentrations discretized for ML model input or import and call utilities in other scripts:
+    python transform_measurements.py
+
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-import parameter_input_console
 import numpy as np
 import utils
 
+TESTING_PARAMETERS = {
+               "LOGS_SAVE": False,
+               "WINDOW_SIZE": [64,64],
+               "NAMES": ["all", "A", "A_invers", "B", "B_invers","first","F_1"], # F_1 for testing purpose
+               "NAME_TO_USE": 3,                                # Index of the dataset to use for testing, 0: all, 1: A, 2: A_invers, 3: B, 4: B_invers 5: first, 6: F_1
+  }
 
-LOGS_SAVE = False
-WINDOW_SIZE=[32,32]
-#NAMES=["first","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"] #old names
-NAMES=["all","A","A_invers","B","B_invers","first","F_1"]
-EXAMPLE=NAMES[5]
-TRANFORM_TO_CENTER=True
 
 
 def main():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = utils.load_csv(None,EXAMPLE)
-    plot_gdm(df)
+    logger.logging_config(logs_save=TESTING_PARAMETERS["LOGS_SAVE"], filename="crazyflie_evaluate")    
+    df = utils.load_csv(None,TESTING_PARAMETERS["NAMES"][TESTING_PARAMETERS["NAME_TO_USE"]])
+    plot_gdm(df=df, window_size=TESTING_PARAMETERS["WINDOW_SIZE"])
 
 
     
 
-def plot_gdm(df, window_size=WINDOW_SIZE):
+def plot_gdm(df, window_size=TESTING_PARAMETERS["WINDOW_SIZE"]):
     df= df[0]
     logging.info("Plottting Gas Distribution.")    
     df_plot=transform_column(df=df)

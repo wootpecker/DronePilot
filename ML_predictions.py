@@ -3,43 +3,48 @@ ML_predictions.py
 
 This module provides functionality for loading trained machine learning models, transforming measurement data,
 making predictions, and visualizing results for gas source localization using data collected by a nano-drone.
+Part of this code has been implemented from: https://www.learnpytorch.io/06_pytorch_transfer_learning/#6-make-predictions-on-images-from-the-test-set
 
 -----------------------------
 Testing Parameters:
-- TRANSFORM (bool): Whether to use the transformed dataset for evaluation.
-- MODEL_TYPES: model types to use for predictions.
 - LOGS_SAVE (bool): Boolean to control whether logs are saved.
 - WINDOW_SIZE (list): Size of the input grid for predictions.
+- MODEL_TYPES(list): Model types to use for predictions.
 - PREDICT_WITH_MODEL_TYPE (int): Index of the model type to use for predictions.
+- NAMES (list): List of dataset names for evaluation.
+- NAME_TO_USE (int): Index of the dataset to use for testing.
 
-
-
------------------------------
-Key Parameters:
-- TESTING_PARAMETERS: Dictionary controlling model type, window size, logging, and other settings.
-- WINDOW_SIZE: Size of the input grid for predictions.
-- NAMES: List of dataset names for evaluation.
-- EXAMPLE: Selected dataset for demonstration.
-- TRANFORM_TO_CENTER, SHOW_PLOT: Visualization and transformation flags.
+Constants:
+- device: Device to run the model on (CPU or GPU).
+- BENCH, PRED: Lists to store benchmark and prediction results.
 
 -----------------------------
 Functions:
-- main(): Entry point; loads data, model, and runs predictions/visualizations.
-- transform_data(): Converts measurement DataFrame to normalized image arrays.
-- do_predictions(): Runs the model on input data and returns predictions.
-- load_model(): Loads model weights from disk.
-- plot_predictions(), plot_predictions3(): Visualizes predictions and ground truth.
+- main(): 
+    Entry point for the script.  Loads data, model, and runs predictions/visualizations.
 
+- transform_data(): 
+    Converts measurement DataFrame to normalized image arrays.
+
+- do_predictions(): 
+    Runs the model on input data and returns predictions.
+
+- load_model(): 
+    Loads model weights from disk.
+
+- plot_predictions(), plot_predictions3():
+    Visualizes predictions and ground truth.
+    
 -----------------------------
 Dependencies:
-- torch, torchvision, matplotlib, numpy, pandas, logging, pathlib, os
+- torch, matplotlib, numpy, logging, pathlib, os
 - Custom modules: logs.logger, transform_measurements, parameter_input_console, model_builder, flightpaths, utils
 
 -----------------------------
 Usage:
-Run this script to evaluate trained models on drone-collected gas distribution data and visualize results.
+Run this script to evaluate trained models on drone-collected gas measurements and visualize results, with:
+    python ML_predictions.py
 
-Main reference for code creation: https://www.learnpytorch.io/06_pytorch_transfer_learning/#6-make-predictions-on-images-from-the-test-set
 """
 import torch
 import matplotlib.pyplot as plt
@@ -60,28 +65,21 @@ import utils
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 TESTING_PARAMETERS = {
-               "MODEL_TYPES": ["VGG8", "UnetS"],
                "LOGS_SAVE": False,
                "WINDOW_SIZE": [64,64],
+               "MODEL_TYPES": ["VGG8", "UnetS"],               
                "PREDICT_WITH_MODEL_TYPE": 1,                    # Model to predict with if PLOT_1_MODEL is True, 0: VGG8, 1: UnetS
+               "NAMES": ["all", "A", "A_invers", "B", "B_invers","first"],
+               "NAME_TO_USE": 3,                                # Index of the dataset to use for testing, 0: all, 1: A, 2: A_invers, 3: B, 4: B_invers
   }
-
-
-
-LOGS_SAVE = False
-WINDOW_SIZE=TESTING_PARAMETERS['WINDOW_SIZE']
-NAMES=["all","A","A_invers","B","B_invers"]
-EXAMPLE=NAMES[3]
-TRANFORM_TO_CENTER=True
-SHOW_PLOT=False
-
 
 BENCH=[]
 PRED=[]
 
+
 def main():
     logger.logging_config(logs_save=TESTING_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
-    dfs = utils.load_csv(None,EXAMPLE)
+    dfs = utils.load_csv(None,TESTING_PARAMETERS['NAMES'][TESTING_PARAMETERS['NAME_TO_USE']])
     model_type=TESTING_PARAMETERS['MODEL_TYPES'][TESTING_PARAMETERS['PREDICT_WITH_MODEL_TYPE']]
     model = model_builder.choose_model(model_type=model_type,output_shape=TESTING_PARAMETERS['WINDOW_SIZE'][0]*TESTING_PARAMETERS['WINDOW_SIZE'][1],device=device,window_size=TESTING_PARAMETERS['WINDOW_SIZE'])
     model,_ = load_model(model=model, model_type=model_type, device=device)

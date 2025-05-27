@@ -1,10 +1,29 @@
+"""
+utils.py
 
+This module provides utility functions for loading CSV data and retrieving benchmark and ML model results used for drone accuracy analysis.
+
+-----------------------------
+Functions:
+- load_csv(flightpath, file=None):
+    Loads CSV files from the data directory based on the specified flight path and file type.
+    Supports loading all files, specific folders, or individual files.
+
+- get_results(model_type):
+    Returns prediction and benchmark results for different model types ("UnetS" or "VGG-8").
+
+-----------------------------
+Dependencies:
+- os, logging, pandas
+
+-----------------------------
+Usage:
+Import this module to use its data loading and result retrieval utilities in other scripts:
+"""
 import os
 import logging
 import pandas as pd
 
-NAMES=["all","A","A_invers","B","B_invers","first","F_1"]
-EXAMPLE=NAMES[1]
 
 
 def load_csv(flightpath, file=None): 

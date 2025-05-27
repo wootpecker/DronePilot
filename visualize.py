@@ -1,31 +1,76 @@
+"""
+visualize.py
+
+This script provides functions for loading, transforming, and visualizing measurement data collected by a nano-drone in cm.
+It includes utilities to plot the drone's flight path in ms and gas concentrations for analysis and machine learning integration.
+
+-----------------------------
+Testing Parameters:
+- LOGS_SAVE (bool): Whether to save logs.
+- WINDOW_SIZE (list): Size of the grid for plotting.
+- NAMES (list): List of dataset names.
+- NAME_TO_USE (int): Index of the dataset to use for testing.
+
+-----------------------------
+Functions:
+- main():
+    Used for testing purposes.
+
+- test_all():
+    Loads the selected dataset, configures logging, and calls plotting functions.
+
+- plot_gdm(df, window_size):
+    Plots the gas distribution map for the provided DataFrame.
+
+- plot_flightpath(df, window_size):
+    Plots the drone's flight path using time as color.
+
+- transform_column(df):
+    Transforms DataFrame columns for plotting and analysis.
+
+- transform_m_cm(df_column):
+    Converts meters to centimeters and casts to int.
+
+-----------------------------
+Dependencies:
+- pandas, matplotlib, torch, logging
+- Custom modules: logs.logger, utils
+
+-----------------------------
+Usage:
+Run this script to visualize drone flight paths and gas concentrations:
+    python visualize.py
+
+"""
+
+
 import pandas as pd
-import os
 import matplotlib.pyplot as plt
 import torch
 import logs.logger as logger
 import logging
-import parameter_input_console
-import numpy as np
 import utils
 
-NAMES=["first","F_1","F","F_1.5s","F_60cm","F_fastGas","F_Gas","F_less10cm","F_NoGas"]
-EXAMPLE=NAMES[0]
-LOGS_SAVE = False
-WINDOW_SIZE=[250,250]
+TESTING_PARAMETERS = {
+               "LOGS_SAVE": False,
+               "WINDOW_SIZE": [250,250],
+               "NAMES": ["all", "A", "A_invers", "B", "B_invers","first","F_1"], # F_1 for testing purpose
+               "NAME_TO_USE": 3,                                # Index of the dataset to use for testing, 0: all, 1: A, 2: A_invers, 3: B, 4: B_invers 5: first, 6: F_1
+  }
 
 def main():
     test_all()
 
 
 def test_all():
-    logger.logging_config(logs_save=LOGS_SAVE, filename="crazyflie_evaluate")    
-    df = utils.load_csv(None,EXAMPLE)
+    logger.logging_config(logs_save=TESTING_PARAMETERS["LOGS_SAVE"], filename="crazyflie_evaluate")    
+    df = utils.load_csv(None,TESTING_PARAMETERS["NAMES"][TESTING_PARAMETERS["NAME_TO_USE"]])
     df = df[0]
     plot_flightpath(df)
     plot_gdm(df)    
 
 
-def plot_gdm(df, window_size=WINDOW_SIZE):
+def plot_gdm(df, window_size=TESTING_PARAMETERS["WINDOW_SIZE"]):
     logging.info("Plottting Gas Distribution.")    
     df_plot=transform_column(df=df)
     X=df_plot['X']
@@ -57,7 +102,7 @@ def plot_gdm(df, window_size=WINDOW_SIZE):
 
 
 
-def plot_flightpath(df, window_size=WINDOW_SIZE):
+def plot_flightpath(df, window_size=TESTING_PARAMETERS["WINDOW_SIZE"]):
     logging.info("Plottting Flightpath.")    
     df_plot=transform_column(df=df)
     X=df_plot['X']

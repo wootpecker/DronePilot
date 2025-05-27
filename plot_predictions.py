@@ -5,10 +5,11 @@ This module provides visualization utilities for plotting model predictions on a
 It supports plotting different source locations and model types, and visualizes intended flight paths, source locations, wind directions, and model predictions.
 
 -----------------------------
-HYPER_PARAMETERS (dict):
-Constants:
-- HYPER_PARAMETERS (dict): Hyperparameters for plotting and model selection.
-- TESTING_PARAMETERS (dict): Parameters for selecting which model to test.
+Testing Parameters:
+- MODEL_TYPES (list): List of model types to test.
+- MODEL_TO_TEST (int): Index of the model type to test.
+- LOGS_SAVE (bool): Whether to save logs.
+- WINDOW_SIZE (list): Size of the window for plotting predictions.
 
 -----------------------------
 Functions:
@@ -45,8 +46,6 @@ Dependencies:
 Usage:
 - Run this module directly to visualize predictions:
         python plot_predictions.py
-
-- Import and use plotting functions in other scripts for custom visualization.
 """
 
 
@@ -55,29 +54,22 @@ import matplotlib.pyplot as plt
 import flightpaths
 import numpy as np
 import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerPatch
 import utils
 import logging
 from logs import logger
 
 
-HYPER_PARAMETERS = {
-                "SAVE_DATASET": False,
-                "TRANSFORM": False,
-                "MODEL_TYPES": ["VGG8", "UnetS"],
-                "LOGS_SAVE": False,
-                "AMOUNT_SAMPLES": 16,
-                "WINDOW_SIZE": [64,64]
-  }
-
 TESTING_PARAMETERS = {
-                "MODEL_TO_TEST": 1,
+                "MODEL_TYPES": ["VGG8", "UnetS"],
+                "MODEL_TO_TEST": 1,                
+                "LOGS_SAVE": False,
+                "WINDOW_SIZE": [64,64],    
 }
 
 def main():
-    logger.logging_config(logs_save=HYPER_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
-    model_type = HYPER_PARAMETERS['MODEL_TYPES'][TESTING_PARAMETERS['MODEL_TO_TEST']]
+    logger.logging_config(logs_save=TESTING_PARAMETERS['LOGS_SAVE'], filename="crazyflie_predictions")
+    model_type = TESTING_PARAMETERS['MODEL_TYPES'][TESTING_PARAMETERS['MODEL_TO_TEST']]
     plot_prediction_A(model_type)
     plot_prediction_B(model_type)
     #plot_predictions2(model_type)
@@ -85,7 +77,7 @@ def main():
 
 def plot_prediction_A(model_type):
     flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
-    X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
+    X=torch.zeros((TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1]))
     flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
     flight_path=np.array(flight_path)
     source_location_b=[9, 15]
@@ -164,7 +156,7 @@ def plot_prediction_A(model_type):
 
 def plot_prediction_B(model_type):
     flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
-    X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
+    X=torch.zeros((TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1]))
     flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
     flight_path=np.array(flight_path)
     source_location_b=[9, 15]
@@ -225,7 +217,7 @@ def plot_prediction_B(model_type):
 
 def plot_predictions2(model_type):
     flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
-    X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
+    X=torch.zeros((TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1]))
     flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
     flight_path=np.array(flight_path)
     source_location_b=[9, 15]
@@ -343,7 +335,7 @@ def plot_predictions2(model_type):
 
 def plot_predictions3():
     flight_path = flightpaths.flightpath_to_coordinates("Snake",[20,20],4,1)
-    X=torch.zeros((HYPER_PARAMETERS['WINDOW_SIZE'][0],HYPER_PARAMETERS['WINDOW_SIZE'][1]))
+    X=torch.zeros((TESTING_PARAMETERS['WINDOW_SIZE'][0],TESTING_PARAMETERS['WINDOW_SIZE'][1]))
     flight_path=[[int(x * 10),int(y*10)] for x,y in flight_path]
     flight_path=np.array(flight_path)
     fig, axes = plt.subplots(1, 3, figsize=(15, 5),constrained_layout=True) #tight_layout=True)

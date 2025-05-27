@@ -53,7 +53,7 @@ Dependencies:
 -----------------------------
 Usage:
 Run this script directly to collect sensor data with the drone, with:
-python crazyflie_pilot.py
+    python crazyflie_pilot.py
 
 """
 import logs.logger as logger

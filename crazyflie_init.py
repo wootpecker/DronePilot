@@ -20,7 +20,6 @@ Usage:
 
 import cflib.crtp
 import logging
-from crazyflie_init import initialize
 
 
 
